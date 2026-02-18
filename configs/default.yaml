@@ -1,0 +1,59 @@
+paths:
+  input_folder: ./data
+  data_folder: ./database
+  runs_folder: ./runs
+
+snapshots:
+  year: 2020
+  hours: 8760
+  stepsize: 1
+
+
+pipeline:
+  - generators
+  - heat
+  - hydrogen
+  - cop
+  - hydrogen_storage
+  - heat_storage
+  - high_grade_heat
+  - transport
+  - dc_link
+  - co2_constraint
+
+solver:
+  name: gurobi
+  options:
+    Method: 2
+    Crossover: 0
+
+
+
+supply:
+  nuclear:
+    buses: ["PL KP", "PL LD", "PL MA", "PL MZ", "PL PM", "PL SK", "PL WP"]
+    skip_missing_buses: true
+    capital_cost: 875000
+    marginal_cost: 20
+    efficiency: 0.33
+    ramp_limit_up: 0.075
+    ramp_limit_down: 0.075
+    p_min_pu: 0.65
+    co2_emissions: 0.0
+    color: "#808080"
+    default_p_nom_max: 0
+    p_nom_max_by_bus:
+      PL KP: 1800
+      PL LD: 3750
+      PL MA: 1200
+      PL MZ: 3750
+      PL PM: 3750
+      PL SK: 3750
+      PL WP: 3750
+    p_nom_min_by_bus:
+      PL PM: 3750
+
+  biogas:
+    carrier_name: "Biogas plant"
+    p_min_pu: 0.55
+

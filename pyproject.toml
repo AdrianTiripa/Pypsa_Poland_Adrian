@@ -1,0 +1,2 @@
+[project.scripts]
+pypsa-poland = "pypsa_poland.cli:main"
