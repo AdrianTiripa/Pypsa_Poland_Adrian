@@ -1,3 +1,4 @@
+# src/pypsa_poland/components/network.py
 from __future__ import annotations
 
 import logging

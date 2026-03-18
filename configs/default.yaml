@@ -1,7 +1,9 @@
+#default.yaml
 paths:
-  input_folder: ./data
-  data_folder: ./database
-  runs_folder: ./runs
+  input_folder: ../data
+  data_folder: ../database
+  profiles_folder: ../Profiles_1940_2025 # ==================================
+  runs_folder: ../runs
 
 snapshots:
   year: 2020
@@ -25,20 +27,62 @@ solver:
   options:
     Method: 2
     Crossover: 0
+    #NumericFocus: 2
+    BarHomogeneous: 1
+    ScaleFlag: 2
+    # BarConvTol: 0.0001
+    # OptimalityTol: 0.0001
+    # FeasibilityTol: 0.0001
+    
 
 # -------------------------
 # Component parameters
 # -------------------------
 
 files:
-  heat_demand_non_industrial: 2020_Heat_NonIndustiral.xlsx
+
+  # New Parameters - Weather-years data
+  pv_cf: TprovCF_PV_1940_2025.csv
+  onshore_cf: Provincial_Onshore_CF_1940_2025.csv
+  offshore_cf: Offshore_CF_hourly_1940_2025.csv
+  cop_multi: COP_1940_2025_working_data.csv
+  heat_demand_multi: HeatDemand_1940_2025_working_data.csv
+
+  # Unchanged Parameters
+  # heat_demand_non_industrial: 2020_Heat_NonIndustiral.xlsx
   heat_demand_industry: 2020_HeatDemandIndustry.xlsx
-  cop: 2020_COP.xlsx
+  # cop: 2020_COP.xlsx
   hydrogen_demand: 2020_PureHydrogen.xlsx
   transport_demand: 2020_ElectricTransport.xlsx
 
 constraints:
   co2_limit_tonnes: 23750000   # = 0.005 * 475e6 (your current constant)
+
+capacity_targets:
+  solar_pv_ground_total_mw: 69844
+  wind_onshore_total_mw: 36400
+  natural_gas_min_mw: 20200
+  nuclear_min_mw: 19843
+
+  storage_unit_p_nom_min_mw:
+    hydrogen_storage: 3700
+    hydrogen_storage_other: 22400
+    battery: 19469
+    flow: 156
+    PSH: 9070
+    hot_water: 3300
+
+  link_p_nom_caps_mw:
+    links_ending_hydrogen_max: 67000
+    links_ending_electrolyzer_max: 60000
+
+operational_constraints:
+  hydrogen_min_soc:
+    enabled: true
+    min_soc_fraction: 0.3
+    enforce_from_snapshot_index: 360
+    units:
+      - Hydrogen_Storage_PL KP_hydrogen
 
 heat:
   heat_pump:
@@ -143,6 +187,12 @@ network:
       carrier: "DC"
 
 supply:
+  thermal_unlock:
+    carriers: ["Natural gas", "Biogas plant"]
+    set_extendable: true
+    # optional: only if your CSV has p_nom_max=0 for gas and blocks investment
+    default_p_nom_max: 1.0e9
+
   nuclear:
     buses: ["PL KP", "PL LD", "PL MA", "PL MZ", "PL PM", "PL SK", "PL WP"]
     skip_missing_buses: true
@@ -169,3 +219,4 @@ supply:
   biogas:
     carrier_name: "Biogas plant"
     p_min_pu: 0.55
+

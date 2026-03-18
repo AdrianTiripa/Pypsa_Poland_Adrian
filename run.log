@@ -1,0 +1,190 @@
+C:\Users\adria\anaconda3\envs\pypsa-legacy\lib\site-packages\google\api_core\_python_version_support.py:275: FutureWarning: You are using a Python version (3.10.19) which Google will stop supporting in new releases of google.api_core once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.api_core past that date.
+  warnings.warn(message, FutureWarning)
+WARNING:pypsa.network.io:Importing network from PyPSA version v0.0.0 while current version is v0.35.2. Read the release notes at https://pypsa.readthedocs.io/en/latest/release_notes.html to prepare your network for import.
+INFO:pypsa.network.io:New version 1.1.0 available! (Current: 0.35.2)
+C:\Users\adria\anaconda3\envs\pypsa-legacy\lib\site-packages\pypsa\network\io.py:256: UserWarning:
+
+Could not infer format, so each element will be parsed individually, falling back to `dateutil`. To ensure parsing is consistent and as-expected, please specify a format.
+
+WARNING:pypsa.network.io:The following Link have buses which are not defined:
+Index(['PL DS-PL LB hydrogen', 'PL DS-PL OP hydrogen', 'PL DS-PL WP hydrogen',
+       'PL KP-PL LD hydrogen', 'PL KP-PL MZ hydrogen', 'PL KP-PL PM hydrogen',
+       'PL KP-PL WN hydrogen', 'PL KP-PL WP hydrogen', 'PL LB-PL WP hydrogen',
+       'PL LB-PL ZP hydrogen', 'PL LD-PL SK hydrogen', 'PL LD-PL SL hydrogen',
+       'PL LU-PL MZ hydrogen', 'PL LU-PL PK hydrogen', 'PL LU-PL SK hydrogen',
+       'PL MA-PL PK hydrogen', 'PL MA-PL SK hydrogen', 'PL MA-PL SL hydrogen',
+       'PL MZ-PL LD hydrogen', 'PL MZ-PL PD hydrogen', 'PL MZ-PL PK hydrogen',
+       'PL MZ-PL SK hydrogen', 'PL MZ-PL WN hydrogen', 'PL MZ-PL WP hydrogen',
+       'PL OP-PL LD hydrogen', 'PL OP-PL SL hydrogen', 'PL OP-PL WP hydrogen',
+       'PL PD-PL WN hydrogen', 'PL PK-PL SK hydrogen', 'PL PM-PL WN hydrogen',
+       'PL PM-PL WP hydrogen', 'PL PM-PL ZP hydrogen', 'PL SL-PL SK hydrogen',
+       'PL WP-PL LD hydrogen', 'PL WP-PL ZP hydrogen'],
+      dtype='object', name='name')
+WARNING:pypsa.network.io:The following Link have buses which are not defined:
+Index(['PL DS-PL LB hydrogen', 'PL DS-PL OP hydrogen', 'PL DS-PL WP hydrogen',
+       'PL KP-PL LD hydrogen', 'PL KP-PL MZ hydrogen', 'PL KP-PL PM hydrogen',
+       'PL KP-PL WN hydrogen', 'PL KP-PL WP hydrogen', 'PL LB-PL WP hydrogen',
+       'PL LB-PL ZP hydrogen', 'PL LD-PL SK hydrogen', 'PL LD-PL SL hydrogen',
+       'PL LU-PL MZ hydrogen', 'PL LU-PL PK hydrogen', 'PL LU-PL SK hydrogen',
+       'PL MA-PL PK hydrogen', 'PL MA-PL SK hydrogen', 'PL MA-PL SL hydrogen',
+       'PL MZ-PL LD hydrogen', 'PL MZ-PL PD hydrogen', 'PL MZ-PL PK hydrogen',
+       'PL MZ-PL SK hydrogen', 'PL MZ-PL WN hydrogen', 'PL MZ-PL WP hydrogen',
+       'PL OP-PL LD hydrogen', 'PL OP-PL SL hydrogen', 'PL OP-PL WP hydrogen',
+       'PL PD-PL WN hydrogen', 'PL PK-PL SK hydrogen', 'PL PM-PL WN hydrogen',
+       'PL PM-PL WP hydrogen', 'PL PM-PL ZP hydrogen', 'PL SL-PL SK hydrogen',
+       'PL WP-PL LD hydrogen', 'PL WP-PL ZP hydrogen'],
+      dtype='object', name='name')
+INFO:pypsa.network.io:Imported network 'Unnamed Network' has buses, carriers, generators, links, loads, storage_units
+INFO:pypsa_poland.orchestration:Running step: generators
+INFO:pypsa_poland.components.supply:Added 7 nuclear generators
+INFO:pypsa_poland.orchestration:Running step: heat
+INFO:pypsa_poland.components.heat:Adding low-temp heat demand started.
+INFO:pypsa_poland.components.heat:Adding low-temp heat demand done.
+INFO:pypsa_poland.orchestration:Running step: hydrogen
+INFO:pypsa_poland.components.hydrogen:Adding hydrogen started.
+INFO:pypsa_poland.components.hydrogen:Adding hydrogen done.
+INFO:pypsa_poland.orchestration:Running step: cop
+INFO:pypsa_poland.orchestration:Running step: hydrogen_storage
+INFO:pypsa_poland.components.hydrogen:Added hydrogen price anchor load at bus 'PL SK_hydrogen'.
+INFO:pypsa_poland.orchestration:Running step: heat_storage
+INFO:pypsa_poland.orchestration:Running step: high_grade_heat
+INFO:pypsa_poland.orchestration:Running step: transport
+INFO:pypsa_poland.components.transport:Adding transport started.
+INFO:pypsa_poland.components.transport:Adding transport done.
+INFO:pypsa_poland.orchestration:Running step: dc_link
+INFO:pypsa_poland.orchestration:Running step: co2_constraint
+WARNING:pypsa.consistency:The following buses have carriers which are not defined:
+Index(['PL DS', 'PL KP', 'PL LU', 'PL LB', 'PL LD', 'PL MA', 'PL MZ', 'PL OP',
+       'PL PK', 'PL PD', 'PL PM', 'PL SL', 'PL SK', 'PL WN', 'PL WP', 'PL ZP',
+       'PL DS_heat', 'PL KP_heat', 'PL LU_heat', 'PL LB_heat', 'PL LD_heat',
+       'PL MA_heat', 'PL MZ_heat', 'PL OP_heat', 'PL PK_heat', 'PL PD_heat',
+       'PL PM_heat', 'PL SL_heat', 'PL SK_heat', 'PL WN_heat', 'PL WP_heat',
+       'PL ZP_heat'],
+      dtype='object', name='Bus')
+WARNING:pypsa.consistency:The following storage_units have carriers which are not defined:
+Index(['PL DS PSH', 'PL KP PSH', 'PL LB PSH', 'PL LD PSH', 'PL LU PSH',
+       'PL MA PSH', 'PL MZ PSH', 'PL OP PSH', 'PL PD PSH', 'PL PK PSH',
+       'PL PM PSH', 'PL SK PSH', 'PL SL PSH', 'PL WN PSH', 'PL WP PSH',
+       'PL ZP PSH', 'PL DS flow', 'PL KP flow', 'PL LB flow', 'PL LD flow',
+       'PL LU flow', 'PL MA flow', 'PL MZ flow', 'PL OP flow', 'PL PD flow',
+       'PL PK flow', 'PL PM flow', 'PL SK flow', 'PL SL flow', 'PL WN flow',
+       'PL WP flow', 'PL ZP flow', 'transport_storage_PL DS_transport',
+       'transport_storage_PL KP_transport',
+       'transport_storage_PL LU_transport',
+       'transport_storage_PL LB_transport',
+       'transport_storage_PL LD_transport',
+       'transport_storage_PL MA_transport',
+       'transport_storage_PL MZ_transport',
+       'transport_storage_PL OP_transport',
+       'transport_storage_PL PK_transport',
+       'transport_storage_PL PD_transport',
+       'transport_storage_PL PM_transport',
+       'transport_storage_PL SL_transport',
+       'transport_storage_PL SK_transport',
+       'transport_storage_PL WN_transport',
+       'transport_storage_PL WP_transport',
+       'transport_storage_PL ZP_transport'],
+      dtype='object', name='StorageUnit')
+WARNING:pypsa.consistency:The following links have carriers which are not defined:
+Index(['PL DS-PL LB 1', 'PL DS-PL OP 1', 'PL DS-PL WP 1', 'PL KP-PL LD 1',
+       'PL KP-PL MZ 1', 'PL KP-PL PM 1', 'PL KP-PL WN 1', 'PL KP-PL WP 1',
+       'PL LB-PL WP 1', 'PL LB-PL ZP 1', 'PL LD-PL SK 1', 'PL LD-PL SL 1',
+       'PL LU-PL MZ 1', 'PL LU-PL PK 1', 'PL LU-PL SK 1', 'PL MA-PL PK 1',
+       'PL MA-PL SK 1', 'PL MA-PL SL 1', 'PL MZ-PL LD 1', 'PL MZ-PL PD 1',
+       'PL MZ-PL PK 1', 'PL MZ-PL SK 1', 'PL MZ-PL WN 1', 'PL MZ-PL WP 1',
+       'PL OP-PL LD 1', 'PL OP-PL SL 1', 'PL OP-PL WP 1', 'PL PD-PL WN 1',
+       'PL PK-PL SK 1', 'PL PM-PL WN 1', 'PL PM-PL WP 1', 'PL PM-PL ZP 1',
+       'PL SL-PL SK 1', 'PL WP-PL LD 1', 'PL WP-PL ZP 1', 'PL DS_heat_pump',
+       'PL KP_heat_pump', 'PL LD_heat_pump', 'PL LU_heat_pump',
+       'PL LB_heat_pump', 'PL MA_heat_pump', 'PL MZ_heat_pump',
+       'PL OP_heat_pump', 'PL PK_heat_pump', 'PL PD_heat_pump',
+       'PL PM_heat_pump', 'PL SL_heat_pump', 'PL SK_heat_pump',
+       'PL WN_heat_pump', 'PL WP_heat_pump', 'PL ZP_heat_pump'],
+      dtype='object', name='Link')
+WARNING:pypsa.consistency:Encountered nan's in static data for columns ['efficiency2'] of component 'Link'.
+WARNING:pypsa.consistency:The following generators have carriers which are not defined:
+Index(['offshore_wind_PL_PM', 'offshore_wind_PL_ZP'], dtype='object', name='Generator')
+INFO:linopy.model: Solve problem using Gurobi solver
+INFO:linopy.model:Solver options:
+ - Method: 2
+ - Crossover: 0
+INFO:linopy.io:Writing objective.
+Writing constraints.:   0%|[38;2;128;191;255m          [0m| 0/34 [00:00<?, ?it/s]Writing constraints.:  21%|[38;2;128;191;255m##        [0m| 7/34 [00:00<00:01, 25.61it/s]Writing constraints.:  29%|[38;2;128;191;255m##9       [0m| 10/34 [00:01<00:03,  7.21it/s]Writing constraints.:  35%|[38;2;128;191;255m###5      [0m| 12/34 [00:01<00:03,  7.01it/s]Writing constraints.:  44%|[38;2;128;191;255m####4     [0m| 15/34 [00:02<00:04,  4.44it/s]Writing constraints.:  47%|[38;2;128;191;255m####7     [0m| 16/34 [00:03<00:06,  2.75it/s]Writing constraints.:  50%|[38;2;128;191;255m#####     [0m| 17/34 [00:04<00:06,  2.66it/s]Writing constraints.:  53%|[38;2;128;191;255m#####2    [0m| 18/34 [00:04<00:06,  2.63it/s]Writing constraints.:  56%|[38;2;128;191;255m#####5    [0m| 19/34 [00:04<00:04,  3.08it/s]Writing constraints.:  59%|[38;2;128;191;255m#####8    [0m| 20/34 [00:04<00:03,  3.61it/s]Writing constraints.:  62%|[38;2;128;191;255m######1   [0m| 21/34 [00:05<00:04,  2.69it/s]Writing constraints.:  65%|[38;2;128;191;255m######4   [0m| 22/34 [00:06<00:05,  2.06it/s]Writing constraints.:  68%|[38;2;128;191;255m######7   [0m| 23/34 [00:06<00:04,  2.55it/s]Writing constraints.:  71%|[38;2;128;191;255m#######   [0m| 24/34 [00:06<00:03,  3.10it/s]Writing constraints.:  74%|[38;2;128;191;255m#######3  [0m| 25/34 [00:07<00:03,  2.40it/s]Writing constraints.:  76%|[38;2;128;191;255m#######6  [0m| 26/34 [00:08<00:04,  1.84it/s]Writing constraints.:  79%|[38;2;128;191;255m#######9  [0m| 27/34 [00:08<00:02,  2.37it/s]Writing constraints.:  82%|[38;2;128;191;255m########2 [0m| 28/34 [00:08<00:02,  2.98it/s]Writing constraints.:  85%|[38;2;128;191;255m########5 [0m| 29/34 [00:08<00:02,  2.38it/s]Writing constraints.:  88%|[38;2;128;191;255m########8 [0m| 30/34 [00:09<00:02,  1.85it/s]Writing constraints.:  91%|[38;2;128;191;255m#########1[0m| 31/34 [00:11<00:02,  1.05it/s]Writing constraints.:  94%|[38;2;128;191;255m#########4[0m| 32/34 [00:13<00:02,  1.12s/it]Writing constraints.: 100%|[38;2;128;191;255m##########[0m| 34/34 [00:13<00:00,  2.55it/s]
+Writing continuous variables.:   0%|[38;2;128;191;255m          [0m| 0/9 [00:00<?, ?it/s]Writing continuous variables.:  56%|[38;2;128;191;255m#####5    [0m| 5/9 [00:00<00:00, 26.36it/s]Writing continuous variables.:  89%|[38;2;128;191;255m########8 [0m| 8/9 [00:00<00:00, 10.69it/s]Writing continuous variables.: 100%|[38;2;128;191;255m##########[0m| 9/9 [00:00<00:00, 12.92it/s]
+INFO:linopy.io: Writing time: 14.13s
+Set parameter Username
+INFO:gurobipy:Set parameter Username
+Set parameter LicenseID to value 2726637
+INFO:gurobipy:Set parameter LicenseID to value 2726637
+Academic license - for non-commercial use only - expires 2026-10-22
+INFO:gurobipy:Academic license - for non-commercial use only - expires 2026-10-22
+Read LP format model from file C:\Users\adria\AppData\Local\Temp\linopy-problem-uae6rc99.lp
+INFO:gurobipy:Read LP format model from file C:\Users\adria\AppData\Local\Temp\linopy-problem-uae6rc99.lp
+Reading time = 33.60 seconds
+INFO:gurobipy:Reading time = 33.60 seconds
+obj: 11616126 rows, 4765712 columns, 24571978 nonzeros
+INFO:gurobipy:obj: 11616126 rows, 4765712 columns, 24571978 nonzeros
+Set parameter Method to value 2
+INFO:gurobipy:Set parameter Method to value 2
+Set parameter Crossover to value 0
+INFO:gurobipy:Set parameter Crossover to value 0
+Gurobi Optimizer version 12.0.3 build v12.0.3rc0 (win64 - Windows 11+.0 (26200.2))
+INFO:gurobipy:Gurobi Optimizer version 12.0.3 build v12.0.3rc0 (win64 - Windows 11+.0 (26200.2))
+
+INFO:gurobipy:
+CPU model: Intel(R) Core(TM) Ultra 9 185H, instruction set [SSE2|AVX|AVX2]
+INFO:gurobipy:CPU model: Intel(R) Core(TM) Ultra 9 185H, instruction set [SSE2|AVX|AVX2]
+Thread count: 16 physical cores, 22 logical processors, using up to 22 threads
+INFO:gurobipy:Thread count: 16 physical cores, 22 logical processors, using up to 22 threads
+
+INFO:gurobipy:
+Non-default parameters:
+INFO:gurobipy:Non-default parameters:
+Method  2
+INFO:gurobipy:Method  2
+Crossover  0
+INFO:gurobipy:Crossover  0
+
+INFO:gurobipy:
+Optimize a model with 11616126 rows, 4765712 columns and 24571978 nonzeros
+INFO:gurobipy:Optimize a model with 11616126 rows, 4765712 columns and 24571978 nonzeros
+Model fingerprint: 0x24d9ffbe
+INFO:gurobipy:Model fingerprint: 0x24d9ffbe
+Coefficient statistics:
+INFO:gurobipy:Coefficient statistics:
+  Matrix range     [1e-06, 4e+02]
+INFO:gurobipy:  Matrix range     [1e-06, 4e+02]
+  Objective range  [1e-02, 2e+07]
+INFO:gurobipy:  Objective range  [1e-02, 2e+07]
+  Bounds range     [2e+10, 2e+10]
+INFO:gurobipy:  Bounds range     [2e+10, 2e+10]
+  RHS range        [1e+00, 2e+06]
+INFO:gurobipy:  RHS range        [1e+00, 2e+06]
+Warning: Model contains large bounds
+INFO:gurobipy:Warning: Model contains large bounds
+         Consider reformulating model or setting NumericFocus parameter
+INFO:gurobipy:         Consider reformulating model or setting NumericFocus parameter
+         to avoid numerical issues.
+INFO:gurobipy:         to avoid numerical issues.
+Presolve removed 963666 rows and 5437389 columns (presolve time = 5s)...
+INFO:gurobipy:Presolve removed 963666 rows and 5437389 columns (presolve time = 5s)...
+Presolve removed 1236256 rows and 5710000 columns (presolve time = 10s)...
+INFO:gurobipy:Presolve removed 1236256 rows and 5710000 columns (presolve time = 10s)...
+Presolve removed 2179383 rows and 5713412 columns (presolve time = 18s)...
+INFO:gurobipy:Presolve removed 2179383 rows and 5713412 columns (presolve time = 18s)...
+Presolve removed 2179383 rows and 5713412 columns
+INFO:gurobipy:Presolve removed 2179383 rows and 5713412 columns
+Presolve time: 21.00s
+INFO:gurobipy:Presolve time: 21.00s
+WARNING:linopy.constants:Optimization potentially failed: 
+Status: aborted
+Termination condition: user_interrupt
+Solution: 0 primals, 0 duals
+Objective: nan
+Solver model: available
+Solver message: 11
+
+INFO:pypsa.network.io:Exported network 'Unnamed Network'saved to '..\runs\run_20260221_211243 contains: buses, loads, storage_units, links, generators, carriers, global_constraints
+INFO:pypsa_poland.orchestration:Exported results to ..\runs\run_20260221_211243
+
+Interrupt request received
