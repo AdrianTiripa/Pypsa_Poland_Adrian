@@ -28,6 +28,6 @@ conda activate pypsa-env
 python main.py
 
 # Adrian
-conda activate pypsa-legacy
+conda activate pypsa-legacy (no need to)
 set PYTHONPATH=%CD%\src
-python -m pypsa_poland.cli --year 2020
+python -m pypsa_poland.cli --year 2020 
