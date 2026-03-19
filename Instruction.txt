@@ -1,0 +1,33 @@
+Alexander Kies 11:45
+mkdir directoryname
+cd directoryname
+git clone https://github.com/alexfias/cfe_poland_pypsa
+conda install -c anaconda git
+
+Alexander Kies  do  Wszyscy 11:52
+cd cfe_poland_pypsa
+python main.py
+conda info --envs
+conda activate pypsa-env
+python main.py
+
+
+Update:
+
+Alexander Kies 12:02
+cd directoryname/cfe_poland_pypsa
+conda activate pypsa-env
+python main.py
+
+
+Update if code changes (use this one):
+
+cd MODEL_PyPSA_UpDate\cfe_poland_pypsa
+git pull
+conda activate pypsa-env
+python main.py
+
+# Adrian
+conda activate pypsa-legacy
+set PYTHONPATH=%CD%\src
+python -m pypsa_poland.cli --year 2020
