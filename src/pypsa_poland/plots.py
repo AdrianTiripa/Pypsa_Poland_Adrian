@@ -1,6 +1,4 @@
 # src/pypsa_poland/plots.py
-# Run:
-# & C:\Users\adria\anaconda3\envs\pypsa-legacy\python.exe C:\Users\adria\MODEL_PyPSA\Core\pypsa-poland_ADRIAN\src\pypsa_poland\plots.py --run_dir C:\Users\adria\MODEL_PyPSA\Core\runs\run_2020_20260306_010448_GasAdded_1hr_SubOptimal_3545s
 
 from __future__ import annotations
 
@@ -11,6 +9,24 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
+# Usage examples (same style as before):
+#
+# 1) One run:
+# & C:\Users\adria\anaconda3\envs\pypsa-legacy\python.exe C:\Users\adria\MODEL_PyPSA\Core\pypsa-poland_ADRIAN\src\pypsa_poland\plots.py --run_dir C:\Users\adria\MODEL_PyPSA\Core\runs\run_2020_20260321_231455_3hr_Optimal_1577s
+#
+# 2) One run with custom output folder:
+# & C:\Users\adria\anaconda3\envs\pypsa-legacy\python.exe C:\Users\adria\MODEL_PyPSA\Core\pypsa-poland_ADRIAN\src\pypsa_poland\plots.py --run_dir C:\Users\adria\MODEL_PyPSA\Core\runs\run_2020_20260321_231455_3hr_Optimal_1577s --out_dir C:\Users\adria\MODEL_PyPSA\Core\my_figures
+#
+# 3) All runs inside the runs folder:
+# & C:\Users\adria\anaconda3\envs\pypsa-legacy\python.exe C:\Users\adria\MODEL_PyPSA\Core\pypsa-poland_ADRIAN\src\pypsa_poland\plots.py --runs_root C:\Users\adria\MODEL_PyPSA\Core\runs
+#
+# 4) All runs, with top 12 carriers in stacked plots:
+# & C:\Users\adria\anaconda3\envs\pypsa-legacy\python.exe C:\Users\adria\MODEL_PyPSA\Core\pypsa-poland_ADRIAN\src\pypsa_poland\plots.py --runs_root C:\Users\adria\MODEL_PyPSA\Core\runs --top_carriers 12
+#
+# Notes:
+# - Use exactly one of: --run_dir or --runs_root
+# - In single-run mode, figures go to <run_dir>\figures unless --out_dir is given
+# - In batch mode, each run gets its own <run_dir>\figures folder
 
 def read_ts(run_dir: Path, stem: str) -> pd.DataFrame:
     path = run_dir / f"{stem}.csv"
@@ -32,6 +48,29 @@ def try_read_ts(run_dir: Path, stems: list[str]) -> tuple[str | None, pd.DataFra
     return None, None
 
 
+def read_snapshot_weights(run_dir: Path, index: pd.DatetimeIndex) -> pd.Series:
+    path = run_dir / "snapshot_weightings.csv"
+    if not path.exists():
+        return pd.Series(1.0, index=index)
+
+    w = pd.read_csv(path, index_col=0)
+    w.index = pd.to_datetime(w.index, errors="coerce")
+    if w.index.isna().any():
+        w = w.loc[~w.index.isna()].copy()
+
+    for col in ["generators", "objective", "stores"]:
+        if col in w.columns:
+            s = pd.to_numeric(w[col], errors="coerce").fillna(1.0)
+            return s.reindex(index).fillna(1.0)
+
+    return pd.Series(1.0, index=index)
+
+
+def weighted_time_sum(df: pd.DataFrame, weights: pd.Series) -> pd.Series:
+    w = weights.reindex(df.index).fillna(1.0)
+    return df.mul(w, axis=0).sum(axis=0)
+
+
 def choose_capacity_column(df: pd.DataFrame) -> str:
     for c in ["p_nom_opt", "p_nom"]:
         if c in df.columns:
@@ -44,18 +83,17 @@ def region_bus_mask(bus_series: pd.Series) -> pd.Series:
     return b.str.match(r"^PL\s+[A-Z]{2}$")
 
 
-def main() -> None:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--run_dir", required=True, type=str)
-    ap.add_argument("--out_dir", default=None, type=str)
-    ap.add_argument("--top_carriers", default=8, type=int)
-    args = ap.parse_args()
+def is_run_dir(path: Path) -> bool:
+    required = ["generators.csv", "buses.csv", "carriers.csv"]
+    return path.is_dir() and all((path / f).exists() for f in required)
 
-    run_dir = Path(args.run_dir)
-    if not run_dir.exists():
-        raise FileNotFoundError(f"run_dir not found: {run_dir}")
 
-    out_dir = Path(args.out_dir) if args.out_dir else (run_dir / "figures")
+def find_run_dirs(runs_root: Path) -> list[Path]:
+    run_dirs = [p for p in runs_root.iterdir() if is_run_dir(p)]
+    return sorted(run_dirs, key=lambda p: p.name)
+
+
+def make_plots_for_run(run_dir: Path, out_dir: Path, top_carriers: int) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     # ---------- Load metadata ----------
@@ -63,7 +101,6 @@ def main() -> None:
     links = pd.read_csv(run_dir / "links.csv") if (run_dir / "links.csv").exists() else None
     loads = pd.read_csv(run_dir / "loads.csv") if (run_dir / "loads.csv").exists() else None
 
-   
     # ---------- Plot A: Capacity mix per region (stacked bar) ----------
     cap_col = choose_capacity_column(gens)
     gens[cap_col] = pd.to_numeric(gens[cap_col], errors="coerce").fillna(0.0)
@@ -74,12 +111,10 @@ def main() -> None:
     gens_reg = gens[region_bus_mask(gens["bus"])].copy()
     cap = gens_reg.groupby(["bus", "carrier"])[cap_col].sum().unstack(fill_value=0.0)
 
-    # Drop carriers that are essentially zero system-wide (cleans legend)
     tot = cap.sum(axis=0)
     cap = cap.loc[:, tot[tot > 1e-6].index]
 
-    # Keep top carriers by total capacity, rest -> other
-    top = cap.sum(axis=0).sort_values(ascending=False).head(args.top_carriers).index
+    top = cap.sum(axis=0).sort_values(ascending=False).head(top_carriers).index
     cap_plot = cap[top].copy()
     rest = cap.drop(columns=top, errors="ignore")
     if rest.shape[1] > 0:
@@ -104,9 +139,10 @@ def main() -> None:
     plt.savefig(out_dir / "capacity_mix_by_region_stacked.png", dpi=220)
     plt.close()
 
-    # ---------- Plot A2: Energy mix by region (stacked, requires generators-p or generators-p_set) ----------
+    # ---------- Plot A2: Energy mix by region (stacked, weighted) ----------
     stem_gen, gen_p = try_read_ts(run_dir, ["generators-p", "generators-p_set"])
     if gen_p is not None and "name" in gens.columns:
+        weights = read_snapshot_weights(run_dir, gen_p.index)
         gens_idx = gens.set_index("name")
         common = [c for c in gen_p.columns if c in gens_idx.index]
         if common:
@@ -115,19 +151,18 @@ def main() -> None:
 
             if len(meta) > 0:
                 gen_p2 = gen_p[meta.index]
+                E = weighted_time_sum(gen_p2, weights)
 
-                # annual energy per generator (MW * hours step -> MWh if hourly)
-                E = gen_p2.sum(axis=0)
-
-                # energy by (bus, carrier)
-                tmp = pd.DataFrame({"bus": meta["bus"], "carrier": meta["carrier"], "E": E.values}, index=meta.index)
+                tmp = pd.DataFrame(
+                    {"bus": meta["bus"], "carrier": meta["carrier"], "E": E.values},
+                    index=meta.index,
+                )
                 E_bus_car = tmp.groupby(["bus", "carrier"])["E"].sum().unstack(fill_value=0.0)
 
-                # drop tiny carriers for clean legend
                 totE = E_bus_car.sum(axis=0)
                 E_bus_car = E_bus_car.loc[:, totE[totE > 1e-6].index]
 
-                topE = E_bus_car.sum(axis=0).sort_values(ascending=False).head(args.top_carriers).index
+                topE = E_bus_car.sum(axis=0).sort_values(ascending=False).head(top_carriers).index
                 E_plot = E_bus_car[topE].copy()
                 restE = E_bus_car.drop(columns=topE, errors="ignore")
                 if restE.shape[1] > 0:
@@ -146,15 +181,16 @@ def main() -> None:
                 plt.xticks(x, [b.replace("PL ", "") for b in E_plot.index], rotation=0)
                 plt.title("Energy generation mix by region (stacked)")
                 plt.xlabel("Region")
-                plt.ylabel("MW·h (relative MWh if hourly)")
+                plt.ylabel("MWh (snapshot-weighted)")
                 plt.legend(ncols=2, fontsize=9)
                 plt.tight_layout()
                 plt.savefig(out_dir / "energy_mix_by_region_stacked.png", dpi=220)
                 plt.close()
 
-    # ---------- Plot A3: Net imports by region (requires links-p0 and links.csv with bus0/bus1) ----------
+    # ---------- Plot A3: Net imports by region (weighted) ----------
     stem_l0, links_p0 = try_read_ts(run_dir, ["links-p0"])
     if links_p0 is not None and links is not None and all(c in links.columns for c in ["name", "bus0", "bus1"]):
+        weights = read_snapshot_weights(run_dir, links_p0.index)
         links_meta = links.set_index("name")
         common = [c for c in links_p0.columns if c in links_meta.index]
         if common:
@@ -166,15 +202,14 @@ def main() -> None:
             if len(rr) > 0:
                 p0 = links_p0[rr.index]
 
-                # p0 is flow from bus0 -> bus1 (positive means export from bus0)
                 net = {b: 0.0 for b in sorted(pd.concat([rr["bus0"], rr["bus1"]]).unique())}
-                annual = p0.sum(axis=0)  # MW·h if hourly
+                annual = weighted_time_sum(p0, weights)
 
                 for link_name, row in rr.iterrows():
                     b0, b1 = row["bus0"], row["bus1"]
                     v = float(annual.loc[link_name])
-                    net[b0] -= v  # export reduces net imports
-                    net[b1] += v  # import increases net imports
+                    net[b0] -= v
+                    net[b1] += v
 
                 net_s = pd.Series(net).sort_index()
 
@@ -185,7 +220,7 @@ def main() -> None:
                 plt.axhline(0, linewidth=1)
                 plt.title("Net inter-regional imports by region (positive = net importer)")
                 plt.xlabel("Region")
-                plt.ylabel("MW·h (relative MWh if hourly)")
+                plt.ylabel("MWh (snapshot-weighted)")
                 plt.tight_layout()
                 plt.savefig(out_dir / "net_imports_by_region.png", dpi=220)
                 plt.close()
@@ -198,7 +233,7 @@ def main() -> None:
         plt.figure(figsize=(12, 4))
         plt.plot(total_load.values)
         plt.title("Total load (system)")
-        plt.xlabel("Hour")
+        plt.xlabel("Snapshot")
         plt.ylabel("MW")
         plt.tight_layout()
         plt.savefig(out_dir / "total_load.png", dpi=220)
@@ -208,37 +243,34 @@ def main() -> None:
         plt.figure(figsize=(8, 4))
         plt.plot(ldc)
         plt.title("Load duration curve")
-        plt.xlabel("Hour rank")
+        plt.xlabel("Snapshot rank")
         plt.ylabel("MW")
         plt.tight_layout()
         plt.savefig(out_dir / "load_duration_curve.png", dpi=220)
         plt.close()
 
-    # ---------- Plot C: Energy by carrier (annual MWh) ----------
+    # ---------- Plot C: Energy by carrier (annual MWh, weighted) ----------
     stem_gen, gen_p = try_read_ts(run_dir, ["generators-p", "generators-p_set"])
-    if gen_p is not None:
-        # Ensure gens index aligns to gen_p columns
-        # generators.csv usually has a 'name' column; if not, assume same order (rare)
-        if "name" in gens.columns:
-            gens_idx = gens.set_index("name")
-            common = [c for c in gen_p.columns if c in gens_idx.index]
-            if common:
-                gen_p2 = gen_p[common]
-                carrier = gens_idx.loc[common, "carrier"]
-                gen_by_carrier = gen_p2.T.groupby(carrier).sum().T
-                energy = gen_by_carrier.sum(axis=0)  # MW * hours step ~ MWh if hourly
-                energy = energy.sort_values(ascending=False)
+    if gen_p is not None and "name" in gens.columns:
+        weights = read_snapshot_weights(run_dir, gen_p.index)
+        gens_idx = gens.set_index("name")
+        common = [c for c in gen_p.columns if c in gens_idx.index]
+        if common:
+            gen_p2 = gen_p[common]
+            carrier = gens_idx.loc[common, "carrier"]
+            energy_per_gen = weighted_time_sum(gen_p2, weights)
+            energy = energy_per_gen.groupby(carrier).sum().sort_values(ascending=False)
 
-                plt.figure(figsize=(10, 5))
-                plt.bar(np.arange(len(energy.index)), energy.values)
-                plt.xticks(np.arange(len(energy.index)), energy.index, rotation=45, ha="right")
-                plt.title("Annual energy by carrier (sum over time; units ~ MWh if hourly)")
-                plt.ylabel("MW·h (relative)")
-                plt.tight_layout()
-                plt.savefig(out_dir / "energy_by_carrier.png", dpi=220)
-                plt.close()
+            plt.figure(figsize=(10, 5))
+            plt.bar(np.arange(len(energy.index)), energy.values)
+            plt.xticks(np.arange(len(energy.index)), energy.index, rotation=45, ha="right")
+            plt.title("Annual energy by carrier")
+            plt.ylabel("MWh (snapshot-weighted)")
+            plt.tight_layout()
+            plt.savefig(out_dir / "energy_by_carrier.png", dpi=220)
+            plt.close()
 
-    # ---------- Plot D: Link capacity matrix between regions (AC/DC/hydrogen etc.) ----------
+    # ---------- Plot D: Link capacity matrix between regions ----------
     if links is not None and all(c in links.columns for c in ["bus0", "bus1"]):
         links2 = links.copy()
         for c in ["bus0", "bus1"]:
@@ -251,12 +283,11 @@ def main() -> None:
                 rr[cap_col_l] = pd.to_numeric(rr[cap_col_l], errors="coerce").fillna(0.0)
                 rr["link_type"] = rr["carrier"].astype(str) if "carrier" in rr.columns else "Link"
 
-                # choose one type to show matrix for: prefer AC if present
                 preferred = "AC" if "carrier" in rr.columns and (rr["carrier"] == "AC").any() else rr["link_type"].iloc[0]
                 mat = rr[rr["link_type"] == preferred].pivot_table(
                     index="bus0", columns="bus1", values=cap_col_l, aggfunc="sum", fill_value=0.0
                 )
-                # make symmetric for visual
+
                 buses = sorted(set(mat.index).union(set(mat.columns)))
                 mat = mat.reindex(index=buses, columns=buses, fill_value=0.0)
                 mat = mat + mat.T
@@ -271,10 +302,9 @@ def main() -> None:
                 plt.savefig(out_dir / "link_capacity_matrix.png", dpi=220)
                 plt.close()
 
-    # ---------- Plot E (optional): Total interregional flow over time if links-p0 exists ----------
+    # ---------- Plot E: Total interregional flow over time ----------
     stem_l0, links_p0 = try_read_ts(run_dir, ["links-p0"])
     if links_p0 is not None and links is not None and "name" in links.columns:
-        # Keep only interregional region->region links if possible
         links_meta = links.set_index("name")
         common = [c for c in links_p0.columns if c in links_meta.index]
         if common:
@@ -286,13 +316,61 @@ def main() -> None:
                 plt.figure(figsize=(12, 4))
                 plt.plot(total_abs_flow.values)
                 plt.title("Total absolute inter-regional link flow (sum |p0|)")
-                plt.xlabel("Hour")
+                plt.xlabel("Snapshot")
                 plt.ylabel("MW")
                 plt.tight_layout()
                 plt.savefig(out_dir / "total_interregional_flow.png", dpi=220)
                 plt.close()
 
     print(f"Saved figures to: {out_dir}")
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--run_dir", default=None, type=str, help="Single run folder")
+    ap.add_argument("--runs_root", default=None, type=str, help="Folder containing many run folders")
+    ap.add_argument("--out_dir", default=None, type=str, help="Only used in single-run mode")
+    ap.add_argument("--top_carriers", default=8, type=int)
+    args = ap.parse_args()
+
+    if bool(args.run_dir) == bool(args.runs_root):
+        raise ValueError("Provide exactly one of --run_dir or --runs_root.")
+
+    if args.run_dir:
+        run_dir = Path(args.run_dir)
+        if not run_dir.exists():
+            raise FileNotFoundError(f"run_dir not found: {run_dir}")
+
+        out_dir = Path(args.out_dir) if args.out_dir else (run_dir / "figures")
+        make_plots_for_run(run_dir, out_dir, args.top_carriers)
+        return
+
+    runs_root = Path(args.runs_root)
+    if not runs_root.exists():
+        raise FileNotFoundError(f"runs_root not found: {runs_root}")
+
+    run_dirs = find_run_dirs(runs_root)
+    if not run_dirs:
+        raise FileNotFoundError(f"No run folders found in: {runs_root}")
+
+    print(f"Found {len(run_dirs)} run folders in {runs_root}")
+
+    failures = []
+    for i, run_dir in enumerate(run_dirs, start=1):
+        print(f"[{i}/{len(run_dirs)}] Processing {run_dir.name}")
+        try:
+            out_dir = run_dir / "figures"
+            make_plots_for_run(run_dir, out_dir, args.top_carriers)
+        except Exception as e:
+            failures.append((run_dir.name, str(e)))
+            print(f"Failed for {run_dir.name}: {e}")
+
+    if failures:
+        print("\nFinished with some failures:")
+        for name, err in failures:
+            print(f"- {name}: {err}")
+    else:
+        print("\nFinished all runs successfully.")
 
 
 if __name__ == "__main__":

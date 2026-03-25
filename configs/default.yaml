@@ -1,14 +1,16 @@
-#default.yaml
+# default.yaml
+
 paths:
   input_folder: ../data
   data_folder: ../database
-  profiles_folder: ../Profiles_1940_2025 # ==================================
+  profiles_folder: ../Profiles_1940_2025
+  scenario_profiles_root: ../Profiles_new
   runs_folder: ../runs
 
 snapshots:
   year: 2020
-  hours: 8760
-  stepsize: 1
+  stepsize: 3
+  keep_feb29: false
 
 pipeline:
   - generators
@@ -26,37 +28,53 @@ solver:
   name: gurobi
   options:
     Method: 2
-    Crossover: 0
-    #NumericFocus: 2
+    Crossover: 1
+    # NumericFocus: 2
     BarHomogeneous: 1
     ScaleFlag: 2
     # BarConvTol: 0.0001
     # OptimalityTol: 0.0001
     # FeasibilityTol: 0.0001
-    
 
 # -------------------------
-# Component parameters
+# Dynamic profile selection
+# -------------------------
+
+profiles:
+  use_dynamic_heat_cop: true
+  scenario: Core
+  system_year: 2050
+
+  heat:
+    folder: HeatDemand
+    prefix: Qishare
+
+  cop:
+    folder: COP
+    prefix: COPiavg3
+
+# -------------------------
+# Input files
 # -------------------------
 
 files:
-
-  # New Parameters - Weather-years data
+  # Weather-year VRES profiles (kept from old folder unless you move them too)
   pv_cf: TprovCF_PV_1940_2025.csv
   onshore_cf: Provincial_Onshore_CF_1940_2025.csv
   offshore_cf: Offshore_CF_hourly_1940_2025.csv
+
+  # Old placeholders kept for backward compatibility;
+  # ignored when profiles.use_dynamic_heat_cop: true
   cop_multi: COP_1940_2025_working_data.csv
   heat_demand_multi: HeatDemand_1940_2025_working_data.csv
 
-  # Unchanged Parameters
-  # heat_demand_non_industrial: 2020_Heat_NonIndustiral.xlsx
+  # Unchanged demand files
   heat_demand_industry: 2020_HeatDemandIndustry.xlsx
-  # cop: 2020_COP.xlsx
   hydrogen_demand: 2020_PureHydrogen.xlsx
   transport_demand: 2020_ElectricTransport.xlsx
 
 constraints:
-  co2_limit_tonnes: 23750000   # = 0.005 * 475e6 (your current constant)
+  co2_limit_tonnes: 23750000
 
 capacity_targets:
   solar_pv_ground_total_mw: 69844
@@ -85,12 +103,15 @@ operational_constraints:
       - Hydrogen_Storage_PL KP_hydrogen
 
 heat:
+  demand_scale: 1000.0 # MW -> GW
+
   heat_pump:
     carrier: heat_pump
     cop_default: 3.0
     capital_cost: 10000
     marginal_cost: 0.01
     p_nom_extendable: true
+
   thermal_storage:
     carrier: hot_water
     efficiency_store: 0.95
@@ -101,6 +122,7 @@ heat:
     lifetime: 20
     max_hours: 9.2
     p_nom_extendable: true
+
   high_temp_heat:
     carrier: high_temp_heat
     chp_h2_plant:
@@ -129,6 +151,7 @@ hydrogen_storage:
     capital_cost: 60000
     standing_loss: 0.001
     cyclic_state_of_charge: false
+
   other:
     carrier: "hydrogen storage other"
     p_nom_extendable: true
@@ -139,18 +162,16 @@ hydrogen_storage:
     standing_loss: 0.0001
     cyclic_state_of_charge: false
 
-  # Keep your current manual caps here (component reads them and applies if present)
   caps:
     Hydrogen_Storage_PL KP_hydrogen:
-      p_nom_max: 24375.0        # (1_755_000)/72
+      p_nom_max: 24375.0
       p_nom_min: 2000.0
     Hydrogen_Storage_PL DS_hydrogen:
-      p_nom_max: 54166.6666667  # (3_900_000)/72
+      p_nom_max: 54166.6666667
     Hydrogen_Storage_PL PK_hydrogen:
-      p_nom_max: 40111.1111111  # (2_888_000)/72
+      p_nom_max: 40111.1111111
     Hydrogen_Storage_PL MA_hydrogen:
-      p_nom_max: 3750.0         # (270_000)/72
-    # rest default 0 if you want, or omit them
+      p_nom_max: 3750.0
 
   price_anchor:
     bus: "PL SK_hydrogen"
@@ -158,11 +179,13 @@ hydrogen_storage:
 
 transport:
   carrier: transport
+
   link:
     efficiency: 0.99
     capital_cost: 1000
     p_nom: 0
     p_nom_extendable: true
+
   storage:
     carrier: electricity
     efficiency_store: 0.95
@@ -190,7 +213,6 @@ supply:
   thermal_unlock:
     carriers: ["Natural gas", "Biogas plant"]
     set_extendable: true
-    # optional: only if your CSV has p_nom_max=0 for gas and blocks investment
     default_p_nom_max: 1.0e9
 
   nuclear:
@@ -205,6 +227,7 @@ supply:
     co2_emissions: 0.0
     color: "#808080"
     default_p_nom_max: 0
+
     p_nom_max_by_bus:
       PL KP: 1800
       PL LD: 3750
@@ -213,10 +236,10 @@ supply:
       PL PM: 3750
       PL SK: 3750
       PL WP: 3750
+
     p_nom_min_by_bus:
       PL PM: 3750
 
   biogas:
     carrier_name: "Biogas plant"
     p_min_pu: 0.55
-
