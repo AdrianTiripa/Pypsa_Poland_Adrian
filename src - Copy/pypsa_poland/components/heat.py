@@ -1,22 +1,3 @@
-# src/pypsa_poland/components/heat.py
-#
-# Heat sector component additions for pypsa-poland.
-#
-# Covers three distinct heat categories:
-#   - Low-temperature heat (add_heat): residential/commercial heat pump demand
-#     connected to electricity buses via heat-pump links, with time-varying COP.
-#   - High-grade industrial heat (add_high_grade_heat): hydrogen-fuelled CHP
-#     plants producing both electricity and process heat.
-#   - Thermal energy storage (add_heat_storage): hot-water storage units on
-#     heat buses for intra-day demand shifting.
-#   - COP time series (add_cop): overwrites the static heat-pump efficiency with
-#     an hourly COP profile derived from ambient temperature data.
-#
-# Region-code normalisation helpers allow input files with varying column
-# formats (Polish voivodeship names, ISO-style codes, semicolon-delimited
-# headers) to be mapped robustly to the canonical two-letter province codes
-# used throughout the network (DS, KP, LD, ..., ZP).
-
 from __future__ import annotations
 
 import logging
@@ -32,80 +13,98 @@ from .profile_io import read_profile_csv, read_excel_timeseries
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
-# Province ordering and alias table
-# ---------------------------------------------------------------------------
-
-# Canonical order of Poland's 16 voivodeships. Used when a file has plain
-# integer columns 0–15 (no header), which are mapped positionally.
 PROVINCE_ORDER = [
     "DS", "KP", "LD", "LU", "LB", "MA", "MZ", "OP",
     "PK", "PD", "PM", "SL", "SK", "WN", "WP", "ZP",
 ]
 
-# Lookup from various raw column strings to canonical two-letter codes.
-# Handles abbreviations, full Polish names, and "PL XX" / "PL-XX" variants.
 REGION_ALIASES = {
-    "ds": "DS", "pl ds": "DS", "pl-ds": "DS",
-    "dolnoslaskie": "DS", "dolno slaskie": "DS",
+    "ds": "DS",
+    "pl ds": "DS",
+    "pl-ds": "DS",
+    "dolnoslaskie": "DS",
+    "dolno slaskie": "DS",
 
-    "kp": "KP", "pl kp": "KP", "pl-kp": "KP",
-    "kujawsko pomorskie": "KP", "kujawsko-pomorskie": "KP",
+    "kp": "KP",
+    "pl kp": "KP",
+    "pl-kp": "KP",
+    "kujawsko pomorskie": "KP",
+    "kujawsko-pomorskie": "KP",
 
-    "ld": "LD", "pl ld": "LD", "pl-ld": "LD",
+    "ld": "LD",
+    "pl ld": "LD",
+    "pl-ld": "LD",
     "lodzkie": "LD",
 
-    "lu": "LU", "pl lu": "LU", "pl-lu": "LU",
+    "lu": "LU",
+    "pl lu": "LU",
+    "pl-lu": "LU",
     "lubelskie": "LU",
 
-    "lb": "LB", "pl lb": "LB", "pl-lb": "LB",
+    "lb": "LB",
+    "pl lb": "LB",
+    "pl-lb": "LB",
     "lubuskie": "LB",
 
-    "ma": "MA", "pl ma": "MA", "pl-ma": "MA",
+    "ma": "MA",
+    "pl ma": "MA",
+    "pl-ma": "MA",
     "malopolskie": "MA",
 
-    "mz": "MZ", "pl mz": "MZ", "pl-mz": "MZ",
+    "mz": "MZ",
+    "pl mz": "MZ",
+    "pl-mz": "MZ",
     "mazowieckie": "MZ",
 
-    "op": "OP", "pl op": "OP", "pl-op": "OP",
+    "op": "OP",
+    "pl op": "OP",
+    "pl-op": "OP",
     "opolskie": "OP",
 
-    "pk": "PK", "pl pk": "PK", "pl-pk": "PK",
+    "pk": "PK",
+    "pl pk": "PK",
+    "pl-pk": "PK",
     "podkarpackie": "PK",
 
-    "pd": "PD", "pl pd": "PD", "pl-pd": "PD",
+    "pd": "PD",
+    "pl pd": "PD",
+    "pl-pd": "PD",
     "podlaskie": "PD",
 
-    "pm": "PM", "pl pm": "PM", "pl-pm": "PM",
+    "pm": "PM",
+    "pl pm": "PM",
+    "pl-pm": "PM",
     "pomorskie": "PM",
 
-    "sl": "SL", "pl sl": "SL", "pl-sl": "SL",
+    "sl": "SL",
+    "pl sl": "SL",
+    "pl-sl": "SL",
     "slaskie": "SL",
 
-    "sk": "SK", "pl sk": "SK", "pl-sk": "SK",
+    "sk": "SK",
+    "pl sk": "SK",
+    "pl-sk": "SK",
     "swietokrzyskie": "SK",
 
-    "wn": "WN", "pl wn": "WN", "pl-wn": "WN",
-    "warminsko mazurskie": "WN", "warminsko-mazurskie": "WN",
+    "wn": "WN",
+    "pl wn": "WN",
+    "pl-wn": "WN",
+    "warminsko mazurskie": "WN",
+    "warminsko-mazurskie": "WN",
 
-    "wp": "WP", "pl wp": "WP", "pl-wp": "WP",
+    "wp": "WP",
+    "pl wp": "WP",
+    "pl-wp": "WP",
     "wielkopolskie": "WP",
 
-    "zp": "ZP", "pl zp": "ZP", "pl-zp": "ZP",
+    "zp": "ZP",
+    "pl zp": "ZP",
+    "pl-zp": "ZP",
     "zachodniopomorskie": "ZP",
 }
 
 
-# ---------------------------------------------------------------------------
-# Region-code normalisation helpers
-# ---------------------------------------------------------------------------
-
 def _slugify(text: str) -> str:
-    """
-    Normalise a raw string to a lowercase ASCII slug for alias lookup.
-    Strips accents, replaces underscores/semicolons/slashes with spaces,
-    and collapses repeated whitespace.
-    """
     s = str(text).strip()
     s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode("ascii")
     s = s.replace("_", " ").replace(";", " ").replace("/", " ")
@@ -114,20 +113,11 @@ def _slugify(text: str) -> str:
 
 
 def _normalize_region_code(col: str) -> str:
-    """
-    Map a raw column header string to a canonical two-letter province code.
-
-    Attempts to extract the code from semicolon-delimited compound headers
-    (e.g. "Region;DS"), then tries direct regex matching, then falls back
-    to the REGION_ALIASES slug lookup.
-    """
     raw = str(col).strip()
 
-    # pandas default placeholder — leave unnamed columns as-is for later filtering.
     if raw.lower().startswith("unnamed"):
         return raw
 
-    # Try the last non-empty semicolon-delimited part first.
     parts = [p.strip() for p in raw.split(";") if p.strip()]
     for part in reversed(parts):
         part_up = part.upper()
@@ -136,26 +126,19 @@ def _normalize_region_code(col: str) -> str:
         if re.fullmatch(r"PL[-_ ]?[A-Z]{2}", part_up):
             return part_up[-2:]
 
-    # Try the whole string directly.
     raw_up = raw.upper().replace("_", " ").strip()
     if re.fullmatch(r"[A-Z]{2}", raw_up):
         return raw_up
     if re.fullmatch(r"PL[-_ ]?[A-Z]{2}", raw_up):
         return raw_up[-2:]
 
-    # Fall back to the alias table via a slug.
     slug = _slugify(raw)
     return REGION_ALIASES.get(slug, raw.strip())
 
 
 def _normalize_profile_columns(df: pd.DataFrame, label: str) -> pd.DataFrame:
-    """
-    Remove unnamed columns and normalise all remaining column headers to
-    canonical two-letter province codes. Raises on duplicate codes.
-    """
     out = df.copy()
 
-    # Drop columns with auto-generated "Unnamed: N" headers (padding artefacts).
     keep_cols = [c for c in out.columns if not str(c).lower().startswith("unnamed")]
     out = out.loc[:, keep_cols]
 
@@ -171,17 +154,14 @@ def _normalize_profile_columns(df: pd.DataFrame, label: str) -> pd.DataFrame:
 
 def _assign_fixed_province_order_if_needed(df: pd.DataFrame, label: str) -> pd.DataFrame:
     """
-    Assign the canonical PROVINCE_ORDER as column headers when a file was read
-    without any header row, giving pandas default integer columns 0–15.
-
-    New COP and heat-demand files are plain numeric matrices; this function
-    converts their integer columns to the expected two-letter codes so that
-    subsequent region matching works correctly.
+    New COP / heat-demand files are raw numeric matrices with no headers.
+    If pandas reads them with default integer columns 0..15, assign the
+    known province order explicitly.
     """
     out = df.copy()
 
     expected_numeric_cols = list(range(out.shape[1]))
-    actual_cols           = list(out.columns)
+    actual_cols = list(out.columns)
 
     if actual_cols == expected_numeric_cols:
         if out.shape[1] != len(PROVINCE_ORDER):
@@ -194,22 +174,13 @@ def _assign_fixed_province_order_if_needed(df: pd.DataFrame, label: str) -> pd.D
     return out
 
 
-# ---------------------------------------------------------------------------
-# Low-temperature heat (heat pumps + loads)
-# ---------------------------------------------------------------------------
-
 def add_heat(n: pypsa.Network, cfg: dict) -> pypsa.Network:
     """
-    Add low-temperature heat demand and heat pump links.
+    Add low-temperature (non-industrial) heat demand and heat pumps.
 
-    For each electricity bus in the network:
-      - Creates a "<bus>_heat" heat bus if it does not already exist.
-      - Adds a heat-pump Link (electricity → heat) for each region that has
-        a demand time series.
-      - Adds a Load on the heat bus with the demand time series.
-
-    The default static COP is applied here; add_cop() overwrites it with a
-    time-varying profile if called later in the pipeline.
+    - Creates a "{bus}_heat" bus for each electricity bus b (if not exists).
+    - Adds a heat pump Link from elec bus -> heat bus for each region in the demand table.
+    - Adds a Load on each heat bus with time series from profile CSV.
     """
     logger.info("Adding low-temp heat demand started.")
 
@@ -217,13 +188,11 @@ def add_heat(n: pypsa.Network, cfg: dict) -> pypsa.Network:
     heat_demand = _assign_fixed_province_order_if_needed(heat_demand, "heat demand")
     heat_demand = _normalize_profile_columns(heat_demand, "heat demand")
 
-    # Optional global demand scaling factor (e.g. for scenario sensitivity runs).
     demand_scale = float(cfg.get("heat", {}).get("demand_scale", 1.0))
     if demand_scale != 1.0:
         heat_demand = heat_demand * demand_scale
         logger.info("Scaled heat demand by factor %s", demand_scale)
 
-    # Ensure a heat bus exists for every electricity bus in the network.
     for b in n.buses.index:
         heat_bus = f"{b}_heat"
         if heat_bus not in n.buses.index:
@@ -231,7 +200,6 @@ def add_heat(n: pypsa.Network, cfg: dict) -> pypsa.Network:
 
     cop_default = float(cfg.get("heat", {}).get("heat_pump", {}).get("cop_default", 3.0))
 
-    # Add heat-pump links and heat buses for each region with demand data.
     for region in heat_demand.columns:
         elec_bus = f"PL {region}"
         heat_bus = f"PL {region}_heat"
@@ -252,18 +220,11 @@ def add_heat(n: pypsa.Network, cfg: dict) -> pypsa.Network:
                 bus1=heat_bus,
                 efficiency=cop_default,
                 carrier=cfg.get("heat", {}).get("heat_pump", {}).get("carrier", "heat_pump"),
-                capital_cost=float(
-                    cfg.get("heat", {}).get("heat_pump", {}).get("capital_cost", 10_000)
-                ),
-                marginal_cost=float(
-                    cfg.get("heat", {}).get("heat_pump", {}).get("marginal_cost", 0.01)
-                ),
-                p_nom_extendable=bool(
-                    cfg.get("heat", {}).get("heat_pump", {}).get("p_nom_extendable", True)
-                ),
+                capital_cost=float(cfg.get("heat", {}).get("heat_pump", {}).get("capital_cost", 10_000)),
+                marginal_cost=float(cfg.get("heat", {}).get("heat_pump", {}).get("marginal_cost", 0.01)),
+                p_nom_extendable=bool(cfg.get("heat", {}).get("heat_pump", {}).get("p_nom_extendable", True)),
             )
 
-    # Rename columns from region codes to full heat bus names before writing loads.
     heat_demand.columns = [f"PL {col}_heat" for col in heat_demand.columns]
 
     for bus in heat_demand.columns:
@@ -280,17 +241,7 @@ def add_heat(n: pypsa.Network, cfg: dict) -> pypsa.Network:
     return n
 
 
-# ---------------------------------------------------------------------------
-# Thermal energy storage
-# ---------------------------------------------------------------------------
-
 def add_heat_storage(n: pypsa.Network, cfg: dict) -> pypsa.Network:
-    """
-    Add thermal (hot-water) storage units on all low-temperature heat buses.
-
-    High-grade heat buses (ending in "_hydrogen_heat") are excluded because
-    they are served by a different technology (H2 CHP).
-    """
     carrier = cfg.get("heat", {}).get("thermal_storage", {}).get("carrier", "hot_water")
     if carrier not in n.carriers.index:
         n.add("Carrier", carrier)
@@ -309,8 +260,7 @@ def add_heat_storage(n: pypsa.Network, cfg: dict) -> pypsa.Network:
     )
 
     for bus in n.buses.index:
-        # Only add thermal storage to low-temp heat buses, not H2-heat buses.
-        if bus.endswith("_heat") and not bus.endswith("_hydrogen_heat"):
+        if bus.endswith("_heat"):
             storage_name = f"thermal_storage_{bus}"
             if storage_name not in n.storage_units.index:
                 n.add("StorageUnit", name=storage_name, bus=bus, **storage_parameters)
@@ -318,18 +268,7 @@ def add_heat_storage(n: pypsa.Network, cfg: dict) -> pypsa.Network:
     return n
 
 
-# ---------------------------------------------------------------------------
-# High-grade industrial heat
-# ---------------------------------------------------------------------------
-
 def add_high_grade_heat(n: pypsa.Network, cfg: dict) -> pypsa.Network:
-    """
-    Add high-grade (industrial process) heat buses, CHP links, and demand loads.
-
-    Each electricity region gets a high-temperature heat bus. Hydrogen-fuelled
-    CHP links connect the hydrogen bus to both the electricity bus (power output)
-    and the high-temperature heat bus (heat output), modelling co-generation.
-    """
     data_folder = Path(cfg["paths"]["data_folder"])
 
     carrier = cfg.get("heat", {}).get("high_temp_heat", {}).get("carrier", "high_temp_heat")
@@ -338,7 +277,6 @@ def add_high_grade_heat(n: pypsa.Network, cfg: dict) -> pypsa.Network:
 
     chp_cfg = cfg.get("heat", {}).get("high_temp_heat", {}).get("chp_h2_plant", {})
 
-    # Add high-temperature heat buses for every primary electricity bus.
     for bus in n.buses.index:
         if bus.endswith("_heat") or bus.endswith("_hydrogen") or bus.endswith("_high_temp_heat"):
             continue
@@ -347,25 +285,22 @@ def add_high_grade_heat(n: pypsa.Network, cfg: dict) -> pypsa.Network:
         if high_temp_heat_bus not in n.buses.index:
             n.add("Bus", high_temp_heat_bus, carrier=carrier)
 
-    heat_path   = data_folder / cfg["files"]["heat_demand_industry"]
+    heat_path = data_folder / cfg["files"]["heat_demand_industry"]
     heat_demand = read_excel_timeseries(heat_path, cfg, n.snapshots)
     heat_demand = _normalize_profile_columns(heat_demand, "industrial heat demand")
 
     for region in heat_demand.columns:
         elec_bus = f"PL {region}"
-        h2_bus   = f"PL {region}_hydrogen"
+        h2_bus = f"PL {region}_hydrogen"
         heat_bus = f"PL {region}_high_temp_heat"
 
         if elec_bus not in n.buses.index or h2_bus not in n.buses.index:
-            logger.warning(
-                "Skipping high-grade heat region '%s': required buses missing.", region
-            )
+            logger.warning("Skipping high-grade heat region '%s': required buses missing.", region)
             continue
 
         if heat_bus not in n.buses.index:
             n.add("Bus", heat_bus, carrier=carrier)
 
-        # H2 CHP: hydrogen in → electricity + high-grade heat out (two-bus link).
         link_name = f"PL {region}_chp_hydrogen"
         if link_name not in n.links.index:
             n.add(
@@ -374,7 +309,7 @@ def add_high_grade_heat(n: pypsa.Network, cfg: dict) -> pypsa.Network:
                 bus0=h2_bus,
                 bus1=elec_bus,
                 bus2=heat_bus,
-                efficiency=float(chp_cfg.get("efficiency_el",   0.3)),
+                efficiency=float(chp_cfg.get("efficiency_el", 0.3)),
                 efficiency2=float(chp_cfg.get("efficiency_heat", 0.6)),
                 carrier="hydrogen",
                 capital_cost=float(chp_cfg.get("capital_cost", 20_000)),
@@ -382,7 +317,6 @@ def add_high_grade_heat(n: pypsa.Network, cfg: dict) -> pypsa.Network:
                 p_nom_extendable=bool(chp_cfg.get("p_nom_extendable", True)),
             )
 
-    # Rename columns to full high-temp heat bus names and add demand loads.
     heat_demand.columns = [f"PL {col}_high_temp_heat" for col in heat_demand.columns]
 
     for load_name in heat_demand.columns:
@@ -393,17 +327,12 @@ def add_high_grade_heat(n: pypsa.Network, cfg: dict) -> pypsa.Network:
     return n
 
 
-# ---------------------------------------------------------------------------
-# Time-varying COP assignment
-# ---------------------------------------------------------------------------
-
 def add_cop(n: pypsa.Network, cfg: dict) -> pypsa.Network:
     """
-    Assign time-varying COP (coefficient of performance) to heat pump links.
+    Set time-dependent COP (efficiency) for heat pump links from profile CSV.
 
-    Overwrites the static efficiency set by add_heat() with an hourly profile
-    derived from ambient temperature data. The profile is mapped by region code
-    to the corresponding "<PL {region}>_heat_pump" link.
+    Expects region-like columns and maps them to:
+      "PL <region>_heat_pump"
     """
     cop = read_profile_csv(cfg, "cop_multi", n.snapshots)
     cop = _assign_fixed_province_order_if_needed(cop, "COP")
@@ -411,7 +340,7 @@ def add_cop(n: pypsa.Network, cfg: dict) -> pypsa.Network:
     cop.columns = [f"PL {col}_heat_pump" for col in cop.columns]
 
     existing = [c for c in cop.columns if c in n.links.index]
-    missing  = [c for c in cop.columns if c not in n.links.index]
+    missing = [c for c in cop.columns if c not in n.links.index]
 
     if missing:
         logger.warning(

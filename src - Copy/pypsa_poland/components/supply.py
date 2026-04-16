@@ -1,16 +1,4 @@
 # src/pypsa_poland/components/supply.py
-#
-# Generator component additions for pypsa-poland.
-#
-# Handles all conventional and renewable generation:
-#   - Nuclear: added as extendable generators on each configured bus.
-#   - Thermal (gas, biogas): unlocked for investment by fixing p_nom_max and
-#     setting p_nom_extendable=True on imported generators.
-#   - Renewables: capacity-factor time-series (p_max_pu) are assigned from
-#     external CSV profiles for PV, onshore wind, and offshore wind.
-#
-# Minimum stable generation fractions (p_min_pu) are applied to nuclear and
-# biogas generators to enforce technical operating constraints.
 
 from __future__ import annotations
 
@@ -24,10 +12,6 @@ from .profile_io import read_profile_csv
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
-# Carrier registration helper
-# ---------------------------------------------------------------------------
-
 def _ensure_carrier(
     n: pypsa.Network,
     carrier: str,
@@ -36,14 +20,9 @@ def _ensure_carrier(
     nice_name: str | None = None,
     color: str | None = None,
 ) -> None:
-    """
-    Add a carrier to n.carriers if it does not already exist.
-    Optional metadata (nice_name, color) is passed only when provided so that
-    default PyPSA values are not accidentally overwritten.
-    """
     if carrier in n.carriers.index:
         return
-    kwargs: dict = {"co2_emissions": co2_emissions}
+    kwargs = {"co2_emissions": co2_emissions}
     if nice_name is not None:
         kwargs["nice_name"] = nice_name
     if color is not None:
@@ -51,43 +30,31 @@ def _ensure_carrier(
     n.add("Carrier", carrier, **kwargs)
 
 
-# ---------------------------------------------------------------------------
-# Thermal generator unlock
-# ---------------------------------------------------------------------------
-
 def _unlock_thermal_generators(n: pypsa.Network, cfg: dict) -> None:
     """
-    Make existing thermal generators (imported from data/) investable and
-    dispatchable without introducing excessively large upper bounds that hurt
-    solver numerics.
-
-    For each configured carrier:
-      - Sets p_nom_extendable=True.
-      - Patches any missing or zero p_nom_max values to a moderate fallback
-        (default 5000 MW) or 2× p_nom_min where that exists.
-      - Applies per-carrier p_nom_max / p_nom_min overrides from the YAML.
-      - Replaces NaN / zero p_max_pu time-series values with 1.0 so the
-        generator can be dispatched in every snapshot.
+    Make existing thermal generators (imported from data/) investable/usable,
+    without introducing absurdly large upper bounds that hurt numerics.
     """
-    supply_cfg  = cfg.get("supply", {})
-    unlock_cfg  = supply_cfg.get("thermal_unlock", {}) or {}
+    supply_cfg = cfg.get("supply", {})
+    unlock_cfg = supply_cfg.get("thermal_unlock", {}) or {}
 
-    carriers        = [str(c) for c in unlock_cfg.get("carriers", ["Natural gas", "Biogas plant"])]
-    set_extendable  = bool(unlock_cfg.get("set_extendable", True))
+    carriers = unlock_cfg.get("carriers", ["Natural gas", "Biogas plant"])
+    carriers = [str(c) for c in carriers]
 
-    # A moderate cap avoids extreme values that can cause numerical issues in
-    # the LP. Do NOT raise this to 1e9 or similar.
+    set_extendable = bool(unlock_cfg.get("set_extendable", True))
+
+    # IMPORTANT:
+    # keep this moderate; do NOT use 1e9 here
     default_p_nom_max = float(unlock_cfg.get("default_p_nom_max", 5000.0))
 
+    # Optional per-carrier overrides from YAML
     p_nom_max_by_carrier = unlock_cfg.get("p_nom_max_by_carrier", {}) or {}
     p_nom_min_by_carrier = unlock_cfg.get("p_nom_min_by_carrier", {}) or {}
 
     for car in carriers:
         mask = (n.generators.carrier.astype(str) == car)
         if not mask.any():
-            logger.warning(
-                "Thermal unlock: no generators with carrier='%s' found in imported data.", car
-            )
+            logger.warning("Thermal unlock: no generators with carrier='%s' found in imported data.", car)
             continue
 
         if set_extendable:
@@ -95,66 +62,46 @@ def _unlock_thermal_generators(n: pypsa.Network, cfg: dict) -> None:
 
         if "p_nom_max" in n.generators.columns:
             current_max = pd.to_numeric(n.generators.loc[mask, "p_nom_max"], errors="coerce")
-            current_min = (
-                pd.to_numeric(n.generators.loc[mask, "p_nom_min"], errors="coerce")
-                if "p_nom_min" in n.generators.columns
-                else pd.Series(index=n.generators.index[mask], dtype=float)
-            )
+            current_min = pd.to_numeric(n.generators.loc[mask, "p_nom_min"], errors="coerce") if "p_nom_min" in n.generators.columns else pd.Series(index=n.generators.index[mask], dtype=float)
 
             bad = current_max.isna() | (current_max <= 0.0)
 
             if bad.any():
-                # Where p_nom_min exists, set p_nom_max to 2× that value to give
-                # headroom. Otherwise use the moderate default cap.
                 fallback = current_min.fillna(0.0).clip(lower=0.0)
+
+                # If p_nom_min exists, use a modest headroom above it.
+                # Otherwise use the moderate fallback cap.
                 fallback = fallback.where(fallback > 0.0, default_p_nom_max)
                 fallback = fallback.where(fallback == default_p_nom_max, fallback * 2.0)
-                n.generators.loc[current_max.index[bad], "p_nom_max"] = (
-                    fallback.loc[bad].astype(float).values
-                )
 
-        # Apply YAML-level overrides for this carrier.
+                n.generators.loc[current_max.index[bad], "p_nom_max"] = fallback.loc[bad].astype(float).values
+
         if car in p_nom_max_by_carrier and "p_nom_max" in n.generators.columns:
             n.generators.loc[mask, "p_nom_max"] = float(p_nom_max_by_carrier[car])
+
         if car in p_nom_min_by_carrier and "p_nom_min" in n.generators.columns:
             n.generators.loc[mask, "p_nom_min"] = float(p_nom_min_by_carrier[car])
 
-        # Fix NaN / zero p_max_pu time-series values so dispatchable in all hours.
         if hasattr(n, "generators_t") and hasattr(n.generators_t, "p_max_pu"):
-            cols     = n.generators.index[mask].tolist()
+            cols = n.generators.index[mask].tolist()
             existing = [c for c in cols if c in n.generators_t.p_max_pu.columns]
             if existing:
-                pm     = n.generators_t.p_max_pu[existing]
+                pm = n.generators_t.p_max_pu[existing]
                 bad_ts = pm.isna() | (pm <= 0.0)
                 if bad_ts.any().any():
                     n.generators_t.p_max_pu.loc[:, existing] = pm.mask(bad_ts, 1.0)
 
-        logger.info(
-            "Thermal unlock applied for carrier='%s' (%d generators).", car, int(mask.sum())
-        )
+        logger.info("Thermal unlock applied for carrier='%s' (%d generators).", car, int(mask.sum()))
 
-
-# ---------------------------------------------------------------------------
-# Main generator addition step
-# ---------------------------------------------------------------------------
 
 def add_generators(n: pypsa.Network, cfg: dict) -> pypsa.Network:
-    """
-    Add nuclear generators, unlock thermal generators, and assign renewable CF profiles.
-
-    Nuclear generators are added as extendable units on each bus listed in
-    cfg['supply']['nuclear']['buses']. Minimum stable output (p_min_pu) is then
-    applied to both nuclear and biogas generators.
-
-    Renewable capacity factors are loaded from profile CSVs and written into
-    n.generators_t.p_max_pu by matching generator names to column names in the
-    profile files.
-    """
-    supply_cfg  = cfg.get("supply", {})
+    supply_cfg = cfg.get("supply", {})
     nuclear_cfg = supply_cfg.get("nuclear", {}) or {}
-    biogas_cfg  = supply_cfg.get("biogas",  {}) or {}
+    biogas_cfg = supply_cfg.get("biogas", {}) or {}
 
-    # ---- Nuclear carrier and generators ----
+    # -------------------------
+    # Nuclear (as you had)
+    # -------------------------
     _ensure_carrier(
         n,
         "nuclear",
@@ -163,11 +110,12 @@ def add_generators(n: pypsa.Network, cfg: dict) -> pypsa.Network:
         color=nuclear_cfg.get("color", "#808080"),
     )
 
-    buses        = nuclear_cfg.get("buses", "all")
+    buses = nuclear_cfg.get("buses", "all")
     if buses == "all":
         buses = list(n.buses.index)
 
-    skip_missing     = bool(nuclear_cfg.get("skip_missing_buses", True))
+    skip_missing = bool(nuclear_cfg.get("skip_missing_buses", True))
+
     default_p_nom_max = float(nuclear_cfg.get("default_p_nom_max", 0))
     p_nom_max_by_bus = nuclear_cfg.get("p_nom_max_by_bus", {}) or {}
     p_nom_min_by_bus = nuclear_cfg.get("p_nom_min_by_bus", {}) or {}
@@ -182,7 +130,7 @@ def add_generators(n: pypsa.Network, cfg: dict) -> pypsa.Network:
 
         name = f"nuclear_{bus}"
         if name in n.generators.index:
-            continue   # already added (e.g. from a previous pipeline run)
+            continue
 
         p_nom_max = float(p_nom_max_by_bus.get(bus, default_p_nom_max))
         p_nom_min = p_nom_min_by_bus.get(bus, None)
@@ -205,40 +153,34 @@ def add_generators(n: pypsa.Network, cfg: dict) -> pypsa.Network:
 
     logger.info("Added %d nuclear generators", added)
 
-    # Apply minimum stable generation fraction to all nuclear generators.
+    # Min stable generation for nuclear
     nuclear_pmin = float(nuclear_cfg.get("p_min_pu", 0.65))
     mask_nuclear = (n.generators.carrier.astype(str) == "nuclear")
     if mask_nuclear.any():
         n.generators.loc[mask_nuclear, "p_min_pu"] = nuclear_pmin
 
-    # Apply minimum stable generation fraction to biogas generators if present.
+    # Min stable generation for biogas (if biogas exists in imported generators)
     biogas_carrier = str(biogas_cfg.get("carrier_name", "Biogas plant"))
-    biogas_pmin    = float(biogas_cfg.get("p_min_pu", 0.55))
-    mask_biogas    = (n.generators.carrier.astype(str) == biogas_carrier)
+    biogas_pmin = float(biogas_cfg.get("p_min_pu", 0.55))
+    mask_biogas = (n.generators.carrier.astype(str) == biogas_carrier)
     if mask_biogas.any():
         n.generators.loc[mask_biogas, "p_min_pu"] = biogas_pmin
 
-    # Unlock gas and biogas generators for investment and dispatch.
+    # -------------------------
+    # CRITICAL: Unlock gas + biogas (investment/dispatch)
+    # -------------------------
     _unlock_thermal_generators(n, cfg)
 
-    # ---- Renewable capacity-factor profiles ----
-
-    # PV profiles support a separate pv_year override so a 2050 system can use
-    # a specific historical meteorological year's solar resource independently
-    # of the main weather year (used for heat and wind).
-    pv_year = int(cfg["snapshots"].get("pv_year", cfg["snapshots"]["year"]))
-    pv_cfg  = {**cfg, "snapshots": {**cfg["snapshots"], "year": pv_year}}
-    pv_cf   = read_profile_csv(pv_cfg, "pv_cf", n.snapshots)
-
-    on_cf  = read_profile_csv(cfg, "onshore_cf",  n.snapshots)
+    # -------------------------
+    # Renewable CF (p_max_pu) multi-year
+    # -------------------------
+    pv_cf = read_profile_csv(cfg, "pv_cf", n.snapshots)
+    on_cf = read_profile_csv(cfg, "onshore_cf", n.snapshots)
     off_cf = read_profile_csv(cfg, "offshore_cf", n.snapshots)
 
-    # Reindex p_max_pu to the network DatetimeIndex before assigning CF values,
-    # in case it was not yet aligned (belt-and-suspenders after the global fix).
     n.generators_t.p_max_pu = n.generators_t.p_max_pu.reindex(index=n.snapshots)
 
-    # PV: map CSV columns (region codes) to generator names "PL <region> PV2".
-    pv_map  = {col: f"PL {col} PV2" for col in pv_cf.columns}
+    pv_map = {col: f"PL {col} PV2" for col in pv_cf.columns}
     pv_cols = [pv_map[c] for c in pv_cf.columns if pv_map[c] in n.generators.index]
     if pv_cols:
         n.generators_t.p_max_pu.loc[:, pv_cols] = pv_cf.rename(columns=pv_map)[pv_cols]
@@ -246,8 +188,7 @@ def add_generators(n: pypsa.Network, cfg: dict) -> pypsa.Network:
     else:
         logger.warning("PV CF: no generators matched pattern 'PL <region> PV2'")
 
-    # Onshore wind: map to generator names "PL <region> VESTAS V90".
-    on_map  = {col: f"PL {col} VESTAS V90" for col in on_cf.columns}
+    on_map = {col: f"PL {col} VESTAS V90" for col in on_cf.columns}
     on_cols = [on_map[c] for c in on_cf.columns if on_map[c] in n.generators.index]
     if on_cols:
         n.generators_t.p_max_pu.loc[:, on_cols] = on_cf.rename(columns=on_map)[on_cols]
@@ -256,18 +197,13 @@ def add_generators(n: pypsa.Network, cfg: dict) -> pypsa.Network:
         logger.warning("Onshore CF: no generators matched pattern 'PL <region> VESTAS V90'")
 
     def _off_region(col: str) -> str:
-        """
-        Extract the bare region code from an offshore CF column name.
-        Strips "PL " / "PL_" prefixes and everything after the first underscore.
-        """
         c = str(col).strip()
         if "_" in c:
             c = c.split("_", 1)[0]
         c = c.replace("PL ", "").replace("PL_", "")
         return c
 
-    # Offshore wind: map to generator names "offshore_wind_PL_<region>".
-    off_map  = {col: f"offshore_wind_PL_{_off_region(col)}" for col in off_cf.columns}
+    off_map = {col: f"offshore_wind_PL_{_off_region(col)}" for col in off_cf.columns}
     off_cols = [off_map[c] for c in off_cf.columns if off_map[c] in n.generators.index]
     if off_cols:
         n.generators_t.p_max_pu.loc[:, off_cols] = off_cf.rename(columns=off_map)[off_cols]

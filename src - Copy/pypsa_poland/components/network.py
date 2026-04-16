@@ -1,12 +1,4 @@
 # src/pypsa_poland/components/network.py
-#
-# Transmission network additions for pypsa-poland.
-#
-# Currently adds a single hard-coded DC interconnector between the ZP and SL
-# regions (western Baltic coast to Silesia), which represents a planned HVDC
-# link in the NZP 2050 scenario. Additional DC links can be appended here or
-# made data-driven in future.
-
 from __future__ import annotations
 
 import logging
@@ -17,10 +9,7 @@ logger = logging.getLogger(__name__)
 
 def add_dc_links(n: pypsa.Network, cfg: dict) -> pypsa.Network:
     """
-    Add fixed DC interconnector links to the network.
-
-    The link is bidirectional (p_min_pu=-1.0) and non-extendable — its
-    capacity is fixed at the scenario value and not optimised.
+    Add fixed DC links. (Cleanup-only: keep your single hard-coded link.)
     """
     if "DC" not in n.carriers.index:
         n.add("Carrier", "DC")
@@ -32,9 +21,9 @@ def add_dc_links(n: pypsa.Network, cfg: dict) -> pypsa.Network:
             link_name,
             bus0="PL ZP",
             bus1="PL SL",
-            p_nom=4000,           # MW — fixed scenario capacity
+            p_nom=4000,
             p_nom_extendable=False,
-            p_min_pu=-1.0,        # allow flow in both directions
+            p_min_pu=-1.0,
             efficiency=1.0,
             carrier="DC",
         )

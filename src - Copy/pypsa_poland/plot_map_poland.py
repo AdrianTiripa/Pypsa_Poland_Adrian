@@ -1,22 +1,4 @@
-# src/pypsa_poland/plot_map_poland.py
-#
-# Hydrogen network and power-flow plot suite for pypsa-poland.
-#
-# Produces time-series, duration-curve, bar, and stacked-area figures covering:
-#   A. Hydrogen network link capacities (static).
-#   B. Hydrogen network flows over time and duration curves.
-#   C. Hydrogen demand by asset and bus.
-#   D. Hydrogen storage state of charge (time series, max by asset, stacked by bus).
-#   E. Hydrogen storage charge / discharge time series.
-#   F. Electric interregional power flows (time series, duration curves, totals by link).
-#
-# Can be run in single-run mode (--run_dir) or batch mode (--runs_root).
-# In batch mode each run gets its own figures/ sub-directory.
-#
-# Usage:
-#   python plot_map_poland.py --run_dir  <path>
-#   python plot_map_poland.py --runs_root <folder>
-#   python plot_map_poland.py --runs_root <folder> --top_n 12
+# src/pypsa_poland/hydrogen_plots.py
 
 from __future__ import annotations
 
@@ -29,9 +11,29 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 
-# ---------------------------------------------------------------------------
-# I/O and basic helpers
-# ---------------------------------------------------------------------------
+# Usage examples
+#
+# 1) One run:
+# & C:\Users\adria\anaconda3\envs\pypsa-legacy\python.exe C:\Users\adria\MODEL_PyPSA\Core\pypsa-poland_ADRIAN\src\pypsa_poland\hydrogen_plots.py --run_dir C:\Users\adria\MODEL_PyPSA\Core\runs\run_2025_20260322_060526_3hr_Optimal_1401s
+#
+# 2) One run, custom output folder:
+# & C:\Users\adria\anaconda3\envs\pypsa-legacy\python.exe C:\Users\adria\MODEL_PyPSA\Core\pypsa-poland_ADRIAN\src\pypsa_poland\hydrogen_plots.py --run_dir C:\Users\adria\MODEL_PyPSA\Core\runs\run_2025_20260322_060526_3hr_Optimal_1401s --out_dir C:\Users\adria\MODEL_PyPSA\Core\my_figures
+#
+# 3) All runs:
+# & C:\Users\adria\anaconda3\envs\pypsa-legacy\python.exe C:\Users\adria\MODEL_PyPSA\Core\pypsa-poland_ADRIAN\src\pypsa_poland\hydrogen_plots.py --runs_root C:\Users\adria\MODEL_PyPSA\Core\runs
+#
+# 4) All runs, keep more lines in top-flow plots:
+# & C:\Users\adria\anaconda3\envs\pypsa-legacy\python.exe C:\Users\adria\MODEL_PyPSA\Core\pypsa-poland_ADRIAN\src\pypsa_poland\hydrogen_plots.py --runs_root C:\Users\adria\MODEL_PyPSA\Core\runs --top_n 12
+#
+# Notes:
+# - Use exactly one of: --run_dir or --runs_root
+# - In single-run mode, figures go to <run_dir>\figures unless --out_dir is given
+# - In batch mode, each run gets its own <run_dir>\figures folder
+
+
+# -----------------------------
+# Basic helpers
+# -----------------------------
 
 def is_run_dir(path: Path) -> bool:
     required = ["buses.csv", "links.csv", "loads.csv"]
@@ -51,18 +53,13 @@ def read_csv_if_exists(run_dir: Path, filename: str, index_col: int | None = Non
 
 
 def read_ts(run_dir: Path, stem: str) -> pd.DataFrame:
-    """
-    Read a time-series CSV, parsing its index as DatetimeIndex where possible.
-
-    Falls back to numeric index if datetime parsing fails, and to the original
-    string index if numeric conversion also fails.
-    """
     path = run_dir / f"{stem}.csv"
     if not path.exists():
         raise FileNotFoundError(str(path))
+
     df = pd.read_csv(path, index_col=0)
 
-    # Try datetime parse first; keep numeric/original index if it fails.
+    # Try datetime parse first
     parsed = pd.to_datetime(df.index, errors="coerce")
     if not parsed.isna().all():
         good = ~parsed.isna()
@@ -139,9 +136,9 @@ def title_suffix_from_meta(meta: dict) -> str:
     return " (" + ", ".join(parts) + ")"
 
 
-# ---------------------------------------------------------------------------
-# Hydrogen component selectors
-# ---------------------------------------------------------------------------
+# -----------------------------
+# Hydrogen selectors
+# -----------------------------
 
 def hydrogen_link_mask(links: pd.DataFrame) -> pd.Series:
     idx = links.index.astype(str)
@@ -203,9 +200,9 @@ def electric_interregional_link_mask(links: pd.DataFrame) -> pd.Series:
     return rr & (~excluded)
 
 
-# ---------------------------------------------------------------------------
+# -----------------------------
 # Aggregation helpers
-# ---------------------------------------------------------------------------
+# -----------------------------
 
 def top_columns_by_abs_sum(df: pd.DataFrame, n: int) -> list[str]:
     if df is None or df.empty:
@@ -267,9 +264,9 @@ def duration_curve_df(df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(out)
 
 
-# ---------------------------------------------------------------------------
-# Plot primitives
-# ---------------------------------------------------------------------------
+# -----------------------------
+# Plot helpers
+# -----------------------------
 
 def save_simple_line_plot(
     df: pd.DataFrame,
@@ -367,18 +364,11 @@ def save_bar_plot(
     plt.close()
 
 
-# ---------------------------------------------------------------------------
-# Main per-run plotting function
-# ---------------------------------------------------------------------------
+# -----------------------------
+# Main plotting logic
+# -----------------------------
 
 def make_hydrogen_plots_for_run(run_dir: Path, out_dir: Path, top_n: int) -> None:
-    """
-    Generate all hydrogen network and power-flow figures for a single run directory.
-
-    Loads static CSVs (links, loads, storage_units, buses) and the corresponding
-    time-series outputs, then produces figures for sections A–F described in the
-    module header. All figures are saved as PNG files in out_dir.
-    """
     out_dir.mkdir(parents=True, exist_ok=True)
 
     meta = try_load_metadata(run_dir)
@@ -665,23 +655,12 @@ def make_hydrogen_plots_for_run(run_dir: Path, out_dir: Path, top_n: int) -> Non
     print(f"Saved hydrogen/power-flow figures to: {out_dir}")
 
 
-# ---------------------------------------------------------------------------
-# CLI entry point
-# ---------------------------------------------------------------------------
-
 def main() -> None:
-    """Produce hydrogen network and power-flow figures for one or a batch of run folders."""
-    ap = argparse.ArgumentParser(
-        description="Hydrogen network and power-flow plot suite for pypsa-poland."
-    )
-    ap.add_argument("--run_dir",   default=None, type=str,
-                    help="Path to a single run folder.")
-    ap.add_argument("--runs_root", default=None, type=str,
-                    help="Root folder containing multiple run sub-folders.")
-    ap.add_argument("--out_dir",   default=None, type=str,
-                    help="Output folder (single-run mode only).")
-    ap.add_argument("--top_n",     default=8,    type=int,
-                    help="Maximum number of assets/links to show in busy plots.")
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--run_dir", default=None, type=str, help="Single run folder")
+    ap.add_argument("--runs_root", default=None, type=str, help="Folder containing many run folders")
+    ap.add_argument("--out_dir", default=None, type=str, help="Only used in single-run mode")
+    ap.add_argument("--top_n", default=8, type=int, help="How many top assets/links to keep in busy plots")
     args = ap.parse_args()
 
     if bool(args.run_dir) == bool(args.runs_root):

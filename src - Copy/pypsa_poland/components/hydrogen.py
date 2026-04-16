@@ -1,30 +1,11 @@
-# src/pypsa_poland/components/hydrogen.py
-#
-# Hydrogen sector component additions for pypsa-poland.
-#
-# Adds the full hydrogen value chain to the network:
-#   - Hydrogen buses on every primary electricity region.
-#   - Electrolyser links (electricity → hydrogen) per region.
-#   - Hydrogen demand time series loaded from Excel.
-#   - Cavern-type and short-duration hydrogen storage units.
-#   - An optional hydrogen price-anchor load for post-processing convenience.
-#
-# Storage design notes
-# --------------------
-# Cavern storage (large seasonal buffer) is restricted to buses explicitly
-# listed in cfg['hydrogen_storage']['caps'], because geological suitability for
-# salt caverns is spatially limited. "Other" hydrogen storage (24 h short-
-# duration) is available everywhere.
-#
-# Cyclic state-of-charge (SOC) is enforced for caverns by default so the model
-# cannot treat the initial SOC as a free gift — see add_hydrogen_storage() for
-# the full explanation.
+#src/pypsa_poland/components/hydrogen.py
 
 from __future__ import annotations
 
 import logging
 from pathlib import Path
 
+import pandas as pd
 import pypsa
 
 from .profile_io import read_excel_timeseries
@@ -32,22 +13,9 @@ from .profile_io import read_excel_timeseries
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
-# Hydrogen buses, electrolysers, and demand
-# ---------------------------------------------------------------------------
-
 def add_hydrogen(n: pypsa.Network, cfg: dict) -> pypsa.Network:
     """
-    Add hydrogen infrastructure: buses, electrolyser links, and demand loads.
-
-    For each primary electricity bus (excluding heat, hydrogen, and high-temp-
-    heat buses) the function adds:
-      - A "<bus>_hydrogen" bus with carrier "hydrogen".
-      - An electrolyser link from the electricity bus to the hydrogen bus.
-      - A placeholder hydrogen demand load (p_set=0 initially).
-
-    Actual demand time series are loaded from Excel and assigned to the loads
-    that match columns in the demand file.
+    Add hydrogen buses, electrolysers (elec -> H2), and hydrogen demand time series.
     """
     data_folder = Path(cfg["paths"]["data_folder"])
     logger.info("Adding hydrogen started.")
@@ -58,7 +26,6 @@ def add_hydrogen(n: pypsa.Network, cfg: dict) -> pypsa.Network:
         n.add("Carrier", "hydrogen")
 
     for bus in n.buses.index:
-        # Skip derived buses — only add hydrogen infrastructure to primary regions.
         if bus.endswith("_heat") or bus.endswith("_hydrogen") or bus.endswith("_high_temp_heat"):
             continue
 
@@ -81,17 +48,15 @@ def add_hydrogen(n: pypsa.Network, cfg: dict) -> pypsa.Network:
                 carrier=str(h2_cfg.get("carrier", "hydrogen")),
             )
 
-        # Placeholder load — time series assigned below after the Excel file is read.
         load_name = f"{bus}_hydrogen_demand"
         if load_name not in n.loads.index:
             n.add("Load", name=load_name, bus=h2_bus, p_set=0.0, carrier="hydrogen")
 
-    # Load hydrogen demand time series from Excel.
-    h2_path   = data_folder / cfg["files"].get("hydrogen_demand", "2020_PureHydrogen.xlsx")
+    # Demand time series (Excel)
+    h2_path = data_folder / cfg["files"].get("hydrogen_demand", "2020_PureHydrogen.xlsx")
     h2_demand = read_excel_timeseries(h2_path, cfg, n.snapshots)
     h2_demand.columns = [f"{col}_hydrogen_demand" for col in h2_demand.columns]
 
-    # Ensure a load exists for each demand column (some may not match the bus loop above).
     for load_name in h2_demand.columns:
         region = load_name.replace("_hydrogen_demand", "")
         h2_bus = f"{region}_hydrogen"
@@ -111,28 +76,24 @@ def add_hydrogen(n: pypsa.Network, cfg: dict) -> pypsa.Network:
     return n
 
 
-# ---------------------------------------------------------------------------
-# Allowed cavern bus derivation
-# ---------------------------------------------------------------------------
-
 def _allowed_cavern_buses_from_caps(hs_cfg: dict) -> set[str]:
     """
-    Derive the set of buses permitted to host cavern storage from the YAML caps.
-
-    Caps keys look like "Hydrogen_Storage_PL DS_hydrogen". This function strips
-    the "Hydrogen_Storage_" prefix to recover the bus name, excluding "other"
-    storage entries.
+    Derive allowed cavern buses from YAML cap entries like:
+    Hydrogen_Storage_PL DS_hydrogen
+    Hydrogen_Storage_PL KP_hydrogen
     """
-    caps    = hs_cfg.get("caps", {}) or {}
+    caps = hs_cfg.get("caps", {}) or {}
     allowed = set()
 
-    prefix       = "Hydrogen_Storage_"
+    prefix = "Hydrogen_Storage_"
     other_prefix = "Hydrogen_Storage_other_"
 
     for su_name in caps:
         su_name = str(su_name)
+
         if su_name.startswith(other_prefix):
-            continue   # "other" storage is not spatially restricted
+            continue
+
         if su_name.startswith(prefix):
             bus = su_name[len(prefix):]
             if bus.endswith("_hydrogen"):
@@ -141,64 +102,31 @@ def _allowed_cavern_buses_from_caps(hs_cfg: dict) -> set[str]:
     return allowed
 
 
-# ---------------------------------------------------------------------------
-# Hydrogen storage
-# ---------------------------------------------------------------------------
-
 def add_hydrogen_storage(n: pypsa.Network, cfg: dict) -> pypsa.Network:
     """
-    Add hydrogen storage units on hydrogen buses.
+    Add hydrogen storage units on *_hydrogen buses.
 
-    Two storage types are distinguished:
-      - Cavern storage (large seasonal buffer, e.g. 106 h max_hours):
-        Only added on buses explicitly listed in cfg['hydrogen_storage']['caps']
-        because geological salt-cavern availability is spatially limited in Poland.
-        Any imported cavern units on disallowed buses are removed.
-      - "Other" short-duration hydrogen storage (24 h):
-        Added on every hydrogen bus — models above-ground pressure vessels or
-        pipeline linepack without geographic restriction.
+    Cavern storage is allowed only on buses explicitly listed in
+    cfg['hydrogen_storage']['caps'] through names like:
+        Hydrogen_Storage_PL DS_hydrogen
 
-    Cyclic state-of-charge for caverns
-    ------------------------------------
-    cyclic_state_of_charge defaults to True for caverns. With False (the old
-    default) the optimiser can freely start January with a full cavern and drain
-    it completely by December, treating the initial SOC as a free gift that never
-    needs replenishing. This makes storage appear cheaper and the system more
-    robust than it really is, especially in extreme weather years (low wind,
-    cold winters) where the model is most tempted to over-draw storage.
+    "Other" hydrogen storage can still exist on every hydrogen bus.
 
-    With cyclic_state_of_charge=True the SOC at year-end must equal the SOC at
-    year-start, which is the physically correct assumption for a planning model
-    that must remain operational across years.
-
-    The YAML key ``hydrogen_storage.cavern.cyclic_state_of_charge`` overrides
-    this default, so it can be set to False for sensitivity studies.
-
-    Note: "other" storage is left with cyclic_state_of_charge=False because it
-    is sized for intra-week balancing and the non-cyclic assumption is less
-    consequential at that timescale.
+    This also removes imported cavern storage units that appear on disallowed buses,
+    so a messy storage_units.csv cannot silently reintroduce bad cavern locations.
     """
     hs_cfg = cfg.get("hydrogen_storage", {})
 
     cavern_cfg = hs_cfg.get("cavern", {})
-    other_cfg  = hs_cfg.get("other",  {})
+    other_cfg = hs_cfg.get("other", {})
 
     carrier_cavern = str(cavern_cfg.get("carrier", "hydrogen storage"))
-    carrier_other  = str(other_cfg.get("carrier",  "hydrogen storage other"))
+    carrier_other = str(other_cfg.get("carrier", "hydrogen storage other"))
 
     if carrier_cavern not in n.carriers.index:
         n.add("Carrier", carrier_cavern)
     if carrier_other not in n.carriers.index:
         n.add("Carrier", carrier_other)
-
-    # Default cyclic_state_of_charge=True for caverns; warn loudly if overridden.
-    cavern_cyclic = bool(cavern_cfg.get("cyclic_state_of_charge", True))
-    if not cavern_cyclic:
-        logger.warning(
-            "H2 cavern cyclic_state_of_charge=False (set explicitly in YAML). "
-            "The optimiser can freely drain caverns to zero by year-end, making "
-            "storage appear cheaper and the system more robust than it really is."
-        )
 
     params_cavern = dict(
         carrier=carrier_cavern,
@@ -209,7 +137,7 @@ def add_hydrogen_storage(n: pypsa.Network, cfg: dict) -> pypsa.Network:
         capital_cost=float(cavern_cfg.get("capital_cost", 60_000)),
         marginal_cost=float(cavern_cfg.get("marginal_cost", 0.0)),
         standing_loss=float(cavern_cfg.get("standing_loss", 0.001)),
-        cyclic_state_of_charge=cavern_cyclic,
+        cyclic_state_of_charge=bool(cavern_cfg.get("cyclic_state_of_charge", False)),
     )
     params_other = dict(
         carrier=carrier_other,
@@ -223,8 +151,8 @@ def add_hydrogen_storage(n: pypsa.Network, cfg: dict) -> pypsa.Network:
         cyclic_state_of_charge=bool(other_cfg.get("cyclic_state_of_charge", False)),
     )
 
-    hydrogen_buses        = [bus for bus in n.buses.index if str(bus).endswith("_hydrogen")]
-    allowed_cavern_buses  = _allowed_cavern_buses_from_caps(hs_cfg)
+    hydrogen_buses = [bus for bus in n.buses.index if str(bus).endswith("_hydrogen")]
+    allowed_cavern_buses = _allowed_cavern_buses_from_caps(hs_cfg)
 
     if allowed_cavern_buses:
         missing_allowed = sorted(b for b in allowed_cavern_buses if b not in n.buses.index)
@@ -239,11 +167,10 @@ def add_hydrogen_storage(n: pypsa.Network, cfg: dict) -> pypsa.Network:
             "No cavern storage units will be added."
         )
 
-    # Remove imported / pre-existing cavern storage on disallowed buses so that
-    # a messy storage_units.csv cannot silently reintroduce bad cavern locations.
+    # Remove imported / pre-existing cavern storage on disallowed buses
     to_remove = []
     for su_name in list(n.storage_units.index):
-        su_bus     = str(n.storage_units.loc[su_name, "bus"])     if "bus"     in n.storage_units.columns else ""
+        su_bus = str(n.storage_units.loc[su_name, "bus"]) if "bus" in n.storage_units.columns else ""
         su_carrier = str(n.storage_units.loc[su_name, "carrier"]) if "carrier" in n.storage_units.columns else ""
 
         is_cavern = (
@@ -261,42 +188,70 @@ def add_hydrogen_storage(n: pypsa.Network, cfg: dict) -> pypsa.Network:
         logger.info("Removing cavern hydrogen storage on disallowed buses: %s", to_remove)
         n.remove("StorageUnit", to_remove)
 
-    # Add cavern storage only on spatially allowed buses.
+    # Add cavern only on allowed buses
     for bus in sorted(allowed_cavern_buses):
         if bus not in n.buses.index:
             continue
+
         name1 = f"Hydrogen_Storage_{bus}"
         if name1 not in n.storage_units.index:
             n.add("StorageUnit", name=name1, bus=bus, **params_cavern)
 
-    # Add short-duration "other" storage on every hydrogen bus.
+    # Add "other" storage on every hydrogen bus
     for bus in hydrogen_buses:
         name2 = f"Hydrogen_Storage_other_{bus}"
         if name2 not in n.storage_units.index:
             n.add("StorageUnit", name=name2, bus=bus, **params_other)
 
-    # Apply per-unit capacity caps from YAML (p_nom_min, p_nom_max, max_hours, etc.).
+    # Apply YAML caps if provided
     caps = hs_cfg.get("caps", {}) or {}
     for su_name, vals in caps.items():
         if su_name not in n.storage_units.index:
-            logger.warning(
-                "H2 storage cap provided for missing StorageUnit '%s' (skipping).", su_name
-            )
+            logger.warning("H2 storage cap provided for missing StorageUnit '%s' (skipping).", su_name)
             continue
         for k, v in (vals or {}).items():
             n.storage_units.loc[su_name, k] = float(v)
 
-    # Optional price-anchor load: a zero-p_set load on a specified hydrogen bus
-    # that can be used to set an implicit H2 price floor in post-processing.
-    anchor      = hs_cfg.get("price_anchor", {}) or {}
-    anchor_bus  = anchor.get("bus", None)
+    # Price anchor from YAML if present
+    anchor = hs_cfg.get("price_anchor", {}) or {}
+    anchor_bus = anchor.get("bus", None)
     anchor_name = anchor.get("load_name", "H2_price_anchor")
     if anchor_bus and anchor_bus in n.buses.index and anchor_name not in n.loads.index:
         n.add("Load", name=anchor_name, bus=anchor_bus, carrier="hydrogen", p_set=0.0)
         if hasattr(n.loads_t, "p_set"):
             n.loads_t.p_set[anchor_name] = 0.0
-        logger.info(
-            "Added hydrogen price anchor load '%s' at bus '%s'.", anchor_name, anchor_bus
-        )
+        logger.info("Added hydrogen price anchor load '%s' at bus '%s'.", anchor_name, anchor_bus)
 
     return n
+
+
+def add_electrolyser_ramp_constraints(
+    n: pypsa.Network, snapshots, ramp_rel_per_hour: float = 0.1
+) -> None:
+    """
+    Adds ramp constraints to the optimization model for electrolyser links.
+
+    IMPORTANT: Call only AFTER the optimization model exists (e.g. after n.optimize.create_model()).
+    """
+    m = n.model
+    p = m.variables["Link-p"]
+    p_nom = m.variables["Link-p_nom"]
+
+    ely = [name for name in n.links.index if name.endswith("electrolyzer")]
+    if not ely:
+        return
+
+    times = list(snapshots)
+    for i in range(1, len(times)):
+        t_prev, t_curr = times[i - 1], times[i]
+        dt_hours = (pd.Timestamp(t_curr) - pd.Timestamp(t_prev)).total_seconds() / 3600.0
+        rhs = ramp_rel_per_hour * dt_hours * p_nom.loc[ely]
+
+        m.add_constraints(
+            p.loc[t_curr, ely] - p.loc[t_prev, ely] <= rhs,
+            name=f"ely_ramp_up__{t_curr}",
+        )
+        m.add_constraints(
+            p.loc[t_prev, ely] - p.loc[t_curr, ely] <= rhs,
+            name=f"ely_ramp_dn__{t_curr}",
+        )

@@ -8,9 +8,10 @@ paths:
   runs_folder: ../runs
 
 snapshots:
-  year: 2020
+  year: 1946
   stepsize: 3
   keep_feb29: false
+  # pv_year: 1946  # -only for 1946
 
 pipeline:
   - generators
@@ -29,12 +30,13 @@ solver:
   options:
     Method: 2
     Crossover: 1
-    # NumericFocus: 2
+    NumericFocus: 1
     BarHomogeneous: 1
     ScaleFlag: 2
-    # BarConvTol: 0.0001
-    # OptimalityTol: 0.0001
-    # FeasibilityTol: 0.0001
+    #BarConvTol: 0.000001
+    #OptimalityTol: 0.000001
+    #FeasibilityTol: 0.000001
+    Threads: 16
 
 # -------------------------
 # Dynamic profile selection
@@ -59,7 +61,7 @@ profiles:
 
 files:
   # Weather-year VRES profiles (kept from old folder unless you move them too)
-  pv_cf: TprovCF_PV_1940_2025.csv
+  pv_cf:  TprovCF_PV_1940_2025.csv #pv_test_files/month_08_Aug_swapped.csv  
   onshore_cf: Provincial_Onshore_CF_1940_2025.csv
   offshore_cf: Offshore_CF_hourly_1940_2025.csv
 
@@ -79,26 +81,42 @@ constraints:
 capacity_targets:
   solar_pv_ground_total_mw: 69844
   wind_onshore_total_mw: 36400
-  natural_gas_min_mw: 20200
-  nuclear_min_mw: 19843
+  natural_gas_total_mw: 20200
+  wind_offshore_total_mw: 45343 #substracted 15MW to match the total from generators.csv
+  wind_offshore_min_mw: 30000   # lower floor
+  nuclear_total_mw: 19843
 
   storage_unit_p_nom_min_mw:
-    hydrogen_storage: 3700
-    hydrogen_storage_other: 22400
-    battery: 19469
+    hydrogen_storage: 3695
+    hydrogen_storage_other: 22353
+    battery: 17469
     flow: 156
     PSH: 9070
-    hot_water: 3300
+    hot_water: 8632 #TES - district heating
 
   link_p_nom_caps_mw:
     links_ending_hydrogen_max: 67000
     links_ending_electrolyzer_max: 60000
 
+# -------------------------
+# Storage initial SOC + cyclic
+# -------------------------
+# Sets cyclic_state_of_charge=True and state_of_charge_initial=30% on all
+# storage units after the full pipeline has run (orchestration.py).
+# cyclic enforces SOC[t=T] == SOC[t=0]; the 30% is a warm-start hint only —
+# it does NOT impose a 30% floor at every timestep. The only unit with a true
+# intra-year minimum SOC floor is Hydrogen_Storage_PL KP_hydrogen, enforced
+# via the LP constraint in operational_constraints.hydrogen_min_soc below.
+storage_initial_soc:
+  enabled: true
+  soc_fraction: 0.30
+  carriers_skip: []
+
 operational_constraints:
   hydrogen_min_soc:
     enabled: true
     min_soc_fraction: 0.3
-    enforce_from_snapshot_index: 360
+    enforce_from_snapshot_index: 0 #360
     units:
       - Hydrogen_Storage_PL KP_hydrogen
 
@@ -139,6 +157,7 @@ hydrogen:
     p_nom_extendable: true
     ramp_limit_up: 0.2
     ramp_limit_down: 0.2
+    use_custom_hourly_ramp: true
     carrier: hydrogen
 
 hydrogen_storage:
@@ -150,7 +169,7 @@ hydrogen_storage:
     efficiency_dispatch: 0.995
     capital_cost: 60000
     standing_loss: 0.001
-    cyclic_state_of_charge: false
+    cyclic_state_of_charge: true #false
 
   other:
     carrier: "hydrogen storage other"
@@ -165,7 +184,7 @@ hydrogen_storage:
   caps:
     Hydrogen_Storage_PL KP_hydrogen:
       p_nom_max: 24375.0
-      p_nom_min: 2000.0
+      p_nom_min: 2000.0 
     Hydrogen_Storage_PL DS_hydrogen:
       p_nom_max: 54166.6666667
     Hydrogen_Storage_PL PK_hydrogen:
@@ -186,8 +205,8 @@ transport:
     p_nom: 0
     p_nom_extendable: true
 
-  storage:
-    carrier: electricity
+  ev_storage: #storage
+    carrier: transport #electricity
     efficiency_store: 0.95
     efficiency_dispatch: 0.95
     standing_loss: 0.001
@@ -213,7 +232,7 @@ supply:
   thermal_unlock:
     carriers: ["Natural gas", "Biogas plant"]
     set_extendable: true
-    default_p_nom_max: 1.0e9
+    default_p_nom_max: 10000 #1.0e9
 
   nuclear:
     buses: ["PL KP", "PL LD", "PL MA", "PL MZ", "PL PM", "PL SK", "PL WP"]
@@ -239,6 +258,8 @@ supply:
 
     p_nom_min_by_bus:
       PL PM: 3750
+      PL KP: 1800
+      PL MA: 1200
 
   biogas:
     carrier_name: "Biogas plant"

@@ -1,24 +1,3 @@
-# src/pypsa_poland/components/profile_io.py
-#
-# Time-series profile loading and alignment for pypsa-poland.
-#
-# All component-addition modules (supply, heat, hydrogen, transport) call the
-# two public functions here to load input profiles:
-#
-#   read_profile_csv  — loads a CSV profile file and aligns it to n.snapshots.
-#   read_excel_timeseries — loads an Excel file and aligns it to n.snapshots.
-#
-# Both delegate to conform_timeseries(), which handles:
-#   - Year slicing for multi-year input files.
-#   - Feb-29 removal for non-leap profiles stored as 8784-row files.
-#   - Downsampling when stepsize > 1.
-#   - Final length validation and DatetimeIndex assignment.
-#
-# Profile path resolution supports two modes:
-#   - Static: a file path from cfg['files'] inside cfg['paths']['profiles_folder'].
-#   - Dynamic: scenario/year-parameterised COP and heat-demand files resolved
-#     from a structured scenario directory tree when use_dynamic_heat_cop=True.
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -29,28 +8,23 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
-# Map profile file_key values that support dynamic (scenario-based) resolution
-# to the corresponding kind string used by _resolve_dynamic_profile_path.
+
 PROFILE_KEY_TO_DYNAMIC_KIND = {
-    "cop_multi":          "cop",
-    "heat_demand_multi":  "heat",
+    "cop_multi": "cop",
+    "heat_demand_multi": "heat",
 }
 
 
-# ---------------------------------------------------------------------------
-# Index inspection helpers
-# ---------------------------------------------------------------------------
-
 def _looks_numeric_index(idx) -> bool:
-    """Return True if the index appears to contain plain integer / row numbers."""
     if isinstance(idx, pd.RangeIndex):
         return True
+
     try:
         if pd.api.types.is_numeric_dtype(idx):
             return True
     except Exception:
         pass
-    # Sample the first 50 entries and check what fraction look numeric.
+
     s = pd.Index(idx).astype(str)
     sample = s[: min(len(s), 50)]
     numericish = sample.str.match(r"^\s*-?\d+(\.\d+)?\s*$", na=False).mean()
@@ -58,10 +32,6 @@ def _looks_numeric_index(idx) -> bool:
 
 
 def _try_datetime_index(idx) -> pd.DatetimeIndex | None:
-    """
-    Attempt to parse the index as a DatetimeIndex.
-    Returns None if it looks numeric or if conversion fails for > 10% of rows.
-    """
     if _looks_numeric_index(idx):
         return None
 
@@ -72,12 +42,7 @@ def _try_datetime_index(idx) -> pd.DatetimeIndex | None:
     return pd.DatetimeIndex(dt)
 
 
-# ---------------------------------------------------------------------------
-# Year-length helpers
-# ---------------------------------------------------------------------------
-
 def _full_year_hours(year: int, keep_feb29: bool) -> int:
-    """Return 8784 for leap years with keep_feb29=True, else 8760."""
     if calendar.isleap(int(year)) and keep_feb29:
         return 8784
     return 8760
@@ -87,8 +52,9 @@ def _slice_to_year(df: pd.DataFrame, year: int) -> pd.DataFrame:
     """
     Return a one-year hourly table for the requested meteorological year.
 
-    If the DataFrame has a parseable datetime index, filter by year.
-    If it has an integer/positional index (already a single year), return as-is.
+    Supports either:
+    - a datetime index spanning multiple years
+    - a raw one-year table with no datetime index
     """
     dt_index = _try_datetime_index(df.index)
 
@@ -105,35 +71,26 @@ def _slice_to_year(df: pd.DataFrame, year: int) -> pd.DataFrame:
             )
         return out.copy()
 
-    # No datetime index — assume the file already contains exactly one year.
     return df.copy()
 
 
-# ---------------------------------------------------------------------------
-# Feb-29 / padding removal helpers
-# ---------------------------------------------------------------------------
-
 def _drop_last_24_rows(df: pd.DataFrame) -> pd.DataFrame:
-    """Drop the last 24 rows (used to strip zero-padded leap-year files)."""
     return df.iloc[:-24].copy()
 
 
 def _drop_feb29_slot_rows(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Drop the 24 hourly rows at the Feb-29 slot position (hours 1416–1439 in
-    a 0-based hourly year table). Used when a real leap-style profile needs
-    to be trimmed to 8760 rows.
+    Drop the 24 hourly rows occupying the Feb-29 slot position
+    (hours 1416..1439 in a 0-based hourly year table).
     """
-    start = 59 * 24   # first hour of day 60 (Feb 29 in a leap year)
-    end   = 60 * 24   # first hour of day 61 (Mar 1)
+    start = 59 * 24
+    end = 60 * 24
     return pd.concat([df.iloc[:start], df.iloc[end:]], axis=0)
 
 
 def _last_24_rows_are_all_zero(df: pd.DataFrame, tol: float = 1e-12) -> bool:
     """
-    Detect non-leap files that have been padded to 8784 rows by appending
-    24 trailing zero rows. Returns True if all values in the last 24 rows
-    are within `tol` of zero.
+    Detect non-leap files padded to 8784 rows by appending 24 trailing zero rows.
     """
     tail = df.iloc[-24:]
     vals = pd.to_numeric(tail.stack(), errors="coerce").dropna()
@@ -142,18 +99,10 @@ def _last_24_rows_are_all_zero(df: pd.DataFrame, tol: float = 1e-12) -> bool:
     return (vals.abs() <= tol).all()
 
 
-# ---------------------------------------------------------------------------
-# Core alignment logic
-# ---------------------------------------------------------------------------
-
 def _conform_to_full_year(df: pd.DataFrame, year: int, keep_feb29: bool) -> pd.DataFrame:
     """
-    Make the table match the expected full hourly length for the requested year.
-
-    Handles three common cases that arise from different profile file conventions:
-      1. Length already matches the expected count — return as-is.
-      2. 8784-row file for a non-leap year with 24 trailing zero rows — drop them.
-      3. 8784-row real leap profile for a non-leap year — drop the Feb-29 slot.
+    Make the table match the full hourly length for the requested year
+    before any downsampling is applied.
     """
     out = _slice_to_year(df, year)
     expected_full = _full_year_hours(year, keep_feb29)
@@ -162,7 +111,7 @@ def _conform_to_full_year(df: pd.DataFrame, year: int, keep_feb29: bool) -> pd.D
         return out.copy()
 
     if len(out) == 8784 and expected_full == 8760:
-        # Case 1: non-leap profile padded with 24 trailing zero rows.
+        # Case 1: non-leap profile padded with 24 trailing zero rows
         if _last_24_rows_are_all_zero(out):
             logger.info(
                 "Detected 8784-row padded profile for year=%s; dropping last 24 zero rows.",
@@ -172,7 +121,7 @@ def _conform_to_full_year(df: pd.DataFrame, year: int, keep_feb29: bool) -> pd.D
             if len(out2) == 8760:
                 return out2
 
-        # Case 2: real leap-style profile — remove the Feb-29 slot.
+        # Case 2: real leap-style profile -> remove Feb-29 slot
         logger.info(
             "Detected 8784-row leap-style profile for year=%s; dropping Feb-29 slot rows.",
             year,
@@ -188,7 +137,6 @@ def _conform_to_full_year(df: pd.DataFrame, year: int, keep_feb29: bool) -> pd.D
 
 
 def _apply_stepsize(df: pd.DataFrame, step: int) -> pd.DataFrame:
-    """Downsample by keeping every `step`-th row (matching network snapshot stride)."""
     step = int(step)
     if step <= 1:
         return df.copy()
@@ -196,19 +144,9 @@ def _apply_stepsize(df: pd.DataFrame, step: int) -> pd.DataFrame:
 
 
 def conform_timeseries(df: pd.DataFrame, cfg: dict, snapshots: pd.DatetimeIndex) -> pd.DataFrame:
-    """
-    Align a raw DataFrame to the network's snapshots.
-
-    Steps:
-      1. Slice to the configured meteorological year.
-      2. Remove Feb-29 rows if needed.
-      3. Apply step-size downsampling.
-      4. Validate that the result length matches snapshots.
-      5. Replace the index with the network DatetimeIndex.
-    """
-    year        = int(cfg["snapshots"]["year"])
-    keep_feb29  = bool(cfg["snapshots"].get("keep_feb29", False))
-    step        = int(cfg["snapshots"].get("stepsize", 1))
+    year = int(cfg["snapshots"]["year"])
+    keep_feb29 = bool(cfg["snapshots"].get("keep_feb29", False))
+    step = int(cfg["snapshots"].get("stepsize", 1))
 
     out = _conform_to_full_year(df, year, keep_feb29)
     out = _apply_stepsize(out, step)
@@ -220,27 +158,12 @@ def conform_timeseries(df: pd.DataFrame, cfg: dict, snapshots: pd.DatetimeIndex)
             f"(year={year}, keep_feb29={keep_feb29}, stepsize={step})."
         )
 
-    # Replace the positional or datetime index with the network's DatetimeIndex
-    # so that all downstream pandas operations align correctly.
     out = out.copy()
     out.index = snapshots
     return out
 
 
-# ---------------------------------------------------------------------------
-# Path resolution
-# ---------------------------------------------------------------------------
-
 def _resolve_dynamic_profile_path(cfg: dict, kind: str) -> Path:
-    """
-    Resolve a scenario-parameterised COP or heat-demand profile path.
-
-    The directory structure is:
-      <scenario_profiles_root>/<scenario>/<subfolder>/<prefix>_<meteo_year>_<system_year>.csv
-
-    Files matching "Neli2_sum_*" are excluded as they are aggregate summaries,
-    not per-region hourly profiles.
-    """
     profiles_cfg = cfg.get("profiles", {})
 
     scenario = profiles_cfg.get("scenario")
@@ -248,12 +171,12 @@ def _resolve_dynamic_profile_path(cfg: dict, kind: str) -> Path:
         raise KeyError("cfg['profiles']['scenario'] is required for dynamic COP/heat files.")
 
     system_year = int(profiles_cfg.get("system_year", 2050))
-    meteo_year  = int(cfg["snapshots"]["year"])
+    meteo_year = int(cfg["snapshots"]["year"])
 
-    root     = Path(cfg["paths"]["scenario_profiles_root"])
+    root = Path(cfg["paths"]["scenario_profiles_root"])
     kind_cfg = profiles_cfg.get(kind, {})
     subfolder = str(kind_cfg.get("folder", "")).strip()
-    prefix    = str(kind_cfg.get("prefix", "")).strip()
+    prefix = str(kind_cfg.get("prefix", "")).strip()
 
     base = root / scenario
     if subfolder:
@@ -262,15 +185,16 @@ def _resolve_dynamic_profile_path(cfg: dict, kind: str) -> Path:
     if not base.exists():
         raise FileNotFoundError(f"Dynamic profile folder does not exist: {base}")
 
-    # Collect candidates in preference order: exact prefix match first.
     candidates = []
+
     if prefix:
         candidates.extend(base.glob(f"{prefix}_{meteo_year}_{system_year}.csv"))
         candidates.extend(base.glob(f"{prefix}*_{meteo_year}_{system_year}.csv"))
+
     candidates.extend(base.glob(f"*_{meteo_year}_{system_year}.csv"))
 
-    # Deduplicate while preserving order; exclude aggregate summary files.
-    unique, seen = [], set()
+    unique = []
+    seen = set()
     for p in candidates:
         if not p.is_file():
             continue
@@ -283,11 +207,9 @@ def _resolve_dynamic_profile_path(cfg: dict, kind: str) -> Path:
 
     if not unique:
         raise FileNotFoundError(
-            f"No {kind} file found in {base} for meteo_year={meteo_year}, "
-            f"system_year={system_year}."
+            f"No {kind} file found in {base} for meteo_year={meteo_year}, system_year={system_year}."
         )
 
-    # Prefer the exact-prefix match if multiple candidates exist.
     exact = []
     if prefix:
         exact_name = f"{prefix}_{meteo_year}_{system_year}.csv"
@@ -306,17 +228,7 @@ def _resolve_dynamic_profile_path(cfg: dict, kind: str) -> Path:
 
 
 def _resolve_profile_path(cfg: dict, file_key: str) -> Path:
-    """
-    Resolve the file path for a named profile key.
-
-    Resolution order:
-      1. If use_dynamic_heat_cop=True and the key supports dynamic resolution,
-         use the scenario-parameterised path.
-      2. If a static path exists under profiles_folder, use that.
-      3. Fall back to dynamic resolution for keys that support it.
-      4. Raise FileNotFoundError if nothing is found.
-    """
-    files        = cfg.get("files", {})
+    files = cfg.get("files", {})
     dynamic_kind = PROFILE_KEY_TO_DYNAMIC_KIND.get(file_key)
     use_dynamic_first = (
         bool(cfg.get("profiles", {}).get("use_dynamic_heat_cop", False))
@@ -344,30 +256,21 @@ def _resolve_profile_path(cfg: dict, file_key: str) -> Path:
     )
 
 
-# ---------------------------------------------------------------------------
-# Public read functions
-# ---------------------------------------------------------------------------
-
 def read_profile_csv(cfg: dict, file_key: str, snapshots: pd.DatetimeIndex) -> pd.DataFrame:
-    """
-    Load a CSV profile file and align it to the network's snapshots.
-
-    Dynamic COP / heat files (when use_dynamic_heat_cop=True) are plain numeric
-    matrices with no header or datetime index, so they are read with header=None.
-    Static files use the first column as the index (legacy behaviour).
-    """
     path = _resolve_profile_path(cfg, file_key)
 
     dynamic_kind = PROFILE_KEY_TO_DYNAMIC_KIND.get(file_key)
-    use_dynamic  = (
+    use_dynamic = (
         bool(cfg.get("profiles", {}).get("use_dynamic_heat_cop", False))
         and dynamic_kind is not None
     )
 
     if use_dynamic:
-        # Dynamic files are raw numeric matrices — no datetime index, no header.
+        # New COP / heat files are plain numeric matrices with no datetime index
+        # and no useful header row.
         df = pd.read_csv(path, header=None)
     else:
+        # Old files keep the old behavior
         df = pd.read_csv(path, index_col=0)
 
     return conform_timeseries(df, cfg, snapshots)
@@ -379,12 +282,6 @@ def read_excel_timeseries(
     snapshots: pd.DatetimeIndex,
     **read_kwargs,
 ) -> pd.DataFrame:
-    """
-    Load an Excel time-series file and align it to the network's snapshots.
-
-    Extra keyword arguments are forwarded to pd.read_excel, allowing callers
-    to specify sheet names or other options.
-    """
     path = Path(path)
-    df   = pd.read_excel(path, index_col=0, **read_kwargs)
+    df = pd.read_excel(path, index_col=0, **read_kwargs)
     return conform_timeseries(df, cfg, snapshots)

@@ -1,11 +1,4 @@
 # src/pypsa_poland/config.py
-#
-# Configuration loader for pypsa-poland.
-#
-# Reads a YAML config file and returns it as a plain Python dict.
-# All pipeline modules consume the same config dict; this module is the
-# single entry point so path validation and encoding are handled once.
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -13,14 +6,12 @@ import yaml
 
 
 def load_config(path: Path) -> dict:
-    """Load and validate a YAML config file, returning its top-level dict."""
     if not path.exists():
         raise FileNotFoundError(f"Config file not found: {path}")
 
     with path.open("r", encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
 
-    # The YAML root must be a mapping; bare lists or scalars are not valid configs.
     if not isinstance(cfg, dict):
         raise ValueError("Config YAML must define a mapping (dictionary) at the top level.")
 
