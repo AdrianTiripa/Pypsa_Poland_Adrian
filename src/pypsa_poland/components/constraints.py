@@ -110,7 +110,7 @@ def fix_total_capacity_by_carrier(n: pypsa.Network, snapshots, cfg: dict) -> Non
     onshore_gens = n.generators.index[n.generators.carrier == "wind"]
     if len(onshore_gens) > 0:
         expr = p_nom_gen.loc[onshore_gens].sum()
-        m.add_constraints(expr >= wind_onshore_total, name="total_onshore_capacity_min")
+        m.add_constraints(expr == wind_onshore_total, name="total_onshore_capacity_min")
     else:
         logger.warning("No generators with carrier 'wind'; wind constraint skipped.")
 
