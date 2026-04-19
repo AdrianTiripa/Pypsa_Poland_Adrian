@@ -1,34 +1,39 @@
-# investment_weather_summary.py
-#
-# Focused investment and cost sensitivity analysis for NZP weather-year runs.
-#
-# Complements the detailed weather_year_compare.py plots with a smaller set
-# of decision-oriented figures that answer three questions:
-#   1. What is the system cost range across weather years?
-#   2. How does the capacity mix / investment pattern change with weather?
-#   3. Which weather characteristics appear to matter most for those changes?
-#
-# Inputs:
-#   - all_runs_summary.csv        from weather_year_compare.py
-#   - weather_year_inputs_summary.csv from weather_year_inputs.py
-#
-# Outputs (all written to --out_dir):
-#   - cost_range_summary.csv
-#   - capacity_sensitivity_summary.csv
-#   - focused_input_output_correlations.csv
-#   - clustered_scatter_inventory.csv
-#   - cost_range_by_year.png
-#   - capacity_sensitivity_ranking.png
-#   - selected_capacity_trajectories.png
-#   - clustered_scatter_<metric>.png  (one per colour metric)
-#
-# Usage:
-#   python investment_weather_summary.py \
-#       --runs_summary <all_runs_summary.csv> \
-#       --inputs_csv   <weather_year_inputs_summary.csv> \
-#       --out_dir      <output_folder>
-
 from __future__ import annotations
+
+"""
+investment_weather_summary.py
+
+Focused executive-summary analysis for NZP weather-year runs.
+
+Purpose
+-------
+Keep the existing detailed plots from weather_year_compare.py, but add a smaller
+set of clearer, decision-oriented figures that answer three questions:
+
+1. What is the system cost range across weather years?
+2. How does the capacity mix / investment pattern change with weather?
+3. Which weather characteristics appear to matter most for those changes?
+
+Main inputs
+-----------
+- all_runs_summary.csv from weather_year_compare.py
+- weather_year_inputs_summary.csv from weather_year_inputs.py
+
+Main outputs
+------------
+- cost_range_summary.csv
+- capacity_sensitivity_summary.csv
+- clustered VRES-vs-heating-demand scatter plots coloured by selected outputs
+- capacity mix plots for the most variable technologies
+- input-output correlation summary for selected investment metrics
+
+Usage example
+-------------
+python investment_weather_summary.py \
+    --runs_summary C:/Users/adria/MODEL_PyPSA/Core/runs/weather_year_comparison/all_runs_summary.csv \
+    --inputs_csv   C:/Users/adria/MODEL_PyPSA/Core/runs/weather_year_inputs/weather_year_inputs_summary.csv \
+    --out_dir      C:/Users/adria/MODEL_PyPSA/Core/runs/weather_year_comparison/investment_weather_summary
+"""
 
 import argparse
 from pathlib import Path
@@ -38,24 +43,20 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 
-# ---------------------------------------------------------------------------
-# Helper functions
-# ---------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# Helpers
+# -----------------------------------------------------------------------------
 
 def safe_numeric(df: pd.DataFrame) -> pd.DataFrame:
-    """Attempt to coerce all DataFrame columns to numeric where possible."""
     out = df.copy()
     for c in out.columns:
-        out[c] = pd.to_numeric(out[c], errors="ignore")
+        converted = pd.to_numeric(out[c], errors="coerce")
+        if converted.notna().sum() > 0:
+            out[c] = converted
     return out
 
 
 def scale_series(s: pd.Series, col: str) -> tuple[pd.Series, str]:
-    """
-    Scale a raw metric series to a human-readable unit for plotting.
-
-    Returns the scaled series and a unit label string.
-    """
     s = pd.to_numeric(s, errors="coerce")
     if col == "objective":
         return s / 1e9, "bn €"
@@ -69,29 +70,22 @@ def scale_series(s: pd.Series, col: str) -> tuple[pd.Series, str]:
 
 
 def pretty_name(col: str) -> str:
-    """Convert a snake_case metric column name to a human-readable label."""
     name = col
     for a, b in [
-        ("cap_gen_",        "Capacity: "),
+        ("cap_gen_", "Capacity: "),
         ("storage_energy_", "Storage energy: "),
-        ("storage_power_",  "Storage power: "),
-        ("gen_",            "Generation: "),
-        ("_mw",             " (MW)"),
-        ("_mwh",            " (MWh)"),
-        ("_pu",             " (p.u.)"),
-        ("_",               " "),
+        ("storage_power_", "Storage power: "),
+        ("gen_", "Generation: "),
+        ("_mw", " (MW)"),
+        ("_mwh", " (MWh)"),
+        ("_pu", " (p.u.)"),
+        ("_", " "),
     ]:
         name = name.replace(a, b)
     return name.strip()
 
 
 def coefficient_of_variation(s: pd.Series) -> float:
-    """
-    Return the population coefficient of variation (std / |mean|).
-
-    Returns NaN if fewer than 2 non-null values or if the mean is effectively
-    zero, to avoid meaningless CV values on near-constant outputs.
-    """
     s = pd.to_numeric(s, errors="coerce").dropna()
     if len(s) < 2:
         return np.nan
@@ -102,7 +96,6 @@ def coefficient_of_variation(s: pd.Series) -> float:
 
 
 def choose_default_color_metrics(df: pd.DataFrame) -> list[str]:
-    """Return the subset of preferred colour metrics that exist in df."""
     candidates = [
         "objective",
         "storage_energy_hydrogen_storage_mwh",
@@ -117,16 +110,7 @@ def choose_default_color_metrics(df: pd.DataFrame) -> list[str]:
 
 
 def choose_variable_capacity_metrics(df: pd.DataFrame, max_n: int = 8) -> list[str]:
-    """
-    Return the capacity/storage metric columns with the highest CV,
-    up to max_n. These are the metrics most worth plotting across years.
-    """
-    cap_cols = [
-        c for c in df.columns
-        if c.startswith("cap_gen_")
-        or c.startswith("storage_power_")
-        or c.startswith("storage_energy_")
-    ]
+    cap_cols = [c for c in df.columns if c.startswith("cap_gen_") or c.startswith("storage_power_") or c.startswith("storage_energy_")]
     rows = []
     for c in cap_cols:
         cv = coefficient_of_variation(df[c])
@@ -136,10 +120,6 @@ def choose_variable_capacity_metrics(df: pd.DataFrame, max_n: int = 8) -> list[s
     return [c for c, _ in rows[:max_n]]
 
 
-# ---------------------------------------------------------------------------
-# Clustering helper
-# ---------------------------------------------------------------------------
-
 def clustered_scatter_table(
     df: pd.DataFrame,
     x_col: str,
@@ -148,14 +128,6 @@ def clustered_scatter_table(
     x_bin: float,
     y_bin: float,
 ) -> pd.DataFrame:
-    """
-    Bin years into (x_bin × y_bin) grid cells and aggregate within each cell.
-
-    Used to reduce overplotting on weather-stress scatter plots when many
-    years cluster together. Returns a DataFrame with one row per occupied cell,
-    containing the cell-mean x, y, and colour values plus a list of the years
-    that fell in that cell.
-    """
     work = df[["year", x_col, y_col, color_col]].copy()
     work = work.dropna()
     if work.empty:
@@ -169,24 +141,20 @@ def clustered_scatter_table(
         return work
 
     work["x_plot"] = x.loc[work.index]
-    # Convert electricity-for-heat from MWh to TWh for the y-axis.
-    work["y_plot"] = (
-        y.loc[work.index] / 1e6 if y_col.endswith("_mwh") else y.loc[work.index]
-    )
+    work["y_plot"] = y.loc[work.index] / 1e6 if y_col.endswith("_mwh") else y.loc[work.index]
     work["color_plot"], color_unit = scale_series(work[color_col], color_col)
 
-    # Round to bin grid so nearby years collapse to the same cell.
     work["x_bin"] = (work["x_plot"] / x_bin).round().astype(int)
     work["y_bin"] = (work["y_plot"] / y_bin).round().astype(int)
 
     grouped = (
         work.groupby(["x_bin", "y_bin"], dropna=False)
         .agg(
-            x=("x_plot",     "mean"),
-            y=("y_plot",     "mean"),
+            x=("x_plot", "mean"),
+            y=("y_plot", "mean"),
             color_value=("color_plot", "mean"),
             n_years=("year", "count"),
-            years=("year",   lambda s: ", ".join(map(str, sorted(s.tolist())))),
+            years=("year", lambda s: ", ".join(map(str, sorted(s.tolist())))),
         )
         .reset_index(drop=True)
     )
@@ -194,28 +162,12 @@ def clustered_scatter_table(
     return grouped
 
 
-# ---------------------------------------------------------------------------
-# Plot functions
-# ---------------------------------------------------------------------------
 
-def plot_clustered_scatter(
-    clustered: pd.DataFrame,
-    title: str,
-    color_label: str,
-    out_path: Path,
-) -> None:
-    """
-    Scatter plot of weather-stress space (VRES CF × electricity-for-heat),
-    with each point coloured by a selected output metric.
-
-    Multi-year clusters are labelled with all years they contain. Single-year
-    points use alternating offsets to reduce label overlap.
-    """
+def plot_clustered_scatter(clustered: pd.DataFrame, title: str, color_label: str, out_path: Path) -> None:
     if clustered.empty:
         return
 
     fig, ax = plt.subplots(figsize=(8.5, 6.2))
-    # Larger markers for cells that represent more years.
     sizes = 40 + 35 * clustered["n_years"].values
     sc = ax.scatter(
         clustered["x"],
@@ -227,28 +179,44 @@ def plot_clustered_scatter(
         linewidths=0.4,
     )
 
+    # label many more points:
+    # - always label multi-year clusters
+    # - also label single-year points with a small alternating offset
     for i, (_, r) in enumerate(clustered.iterrows()):
         years_txt = str(r["years"])
+
         if int(r["n_years"]) >= 3:
-            # Multi-year cluster: label with a simple offset.
-            ax.annotate(years_txt, (r["x"], r["y"]),
-                        fontsize=8, xytext=(4, 4), textcoords="offset points")
+            ax.annotate(
+                years_txt,
+                (r["x"], r["y"]),
+                fontsize=8,
+                xytext=(4, 4),
+                textcoords="offset points",
+            )
         else:
-            # Single-year point: alternate offsets to reduce overlap.
             dx = 0.0006 if i % 2 == 0 else -0.0006
             dy = 0.22 if i % 3 == 0 else (-0.22 if i % 3 == 1 else 0.10)
-            ax.annotate(years_txt, (r["x"], r["y"]),
-                        fontsize=7, alpha=0.9,
-                        xytext=(r["x"] + dx, r["y"] + dy),
-                        textcoords="data")
+            ax.annotate(
+                years_txt,
+                (r["x"], r["y"]),
+                fontsize=7,
+                alpha=0.9,
+                xytext=(r["x"] + dx, r["y"] + dy),
+                textcoords="data",
+            )
 
     ax.set_xlabel("Combined VRES capacity factor (p.u.)")
     ax.set_ylabel("Electricity for heat (TWh)")
     ax.set_title(title)
     ax.text(
-        0.01, 0.99,
+        0.01,
+        0.99,
         "Upper-left = harder weather years (low VRES, high electricity-for-heat)",
-        transform=ax.transAxes, ha="left", va="top", fontsize=8, color="dimgray",
+        transform=ax.transAxes,
+        ha="left",
+        va="top",
+        fontsize=8,
+        color="dimgray",
     )
     cbar = plt.colorbar(sc, ax=ax)
     cbar.set_label(color_label)
@@ -257,16 +225,7 @@ def plot_clustered_scatter(
     plt.close()
 
 
-def plot_capacity_trajectories(
-    df: pd.DataFrame,
-    metrics: list[str],
-    out_path: Path,
-) -> None:
-    """
-    Line chart showing the most weather-variable capacity metrics across years.
-
-    Each series is scaled to a human-readable unit before plotting.
-    """
+def plot_capacity_trajectories(df: pd.DataFrame, metrics: list[str], out_path: Path) -> None:
     if not metrics:
         return
 
@@ -284,15 +243,7 @@ def plot_capacity_trajectories(
     plt.close()
 
 
-def plot_capacity_variability_bar(
-    summary_df: pd.DataFrame,
-    out_path: Path,
-    top_n: int = 12,
-) -> None:
-    """
-    Horizontal bar chart ranking the top_n capacity metrics by CV,
-    showing which technology investments are most weather-sensitive.
-    """
+def plot_capacity_variability_bar(summary_df: pd.DataFrame, out_path: Path, top_n: int = 12) -> None:
     top = summary_df.sort_values("cv", ascending=False).head(top_n)
     if top.empty:
         return
@@ -308,26 +259,19 @@ def plot_capacity_variability_bar(
 
 
 def plot_cost_range(df: pd.DataFrame, out_path: Path) -> None:
-    """
-    Line chart of system cost by weather year with a dashed mean reference
-    and a shaded band spanning the min–max range.
-    """
     if "objective" not in df.columns:
         return
-    s    = pd.to_numeric(df["objective"], errors="coerce") / 1e9
-    year = pd.to_numeric(df["year"],      errors="coerce")
+    s = pd.to_numeric(df["objective"], errors="coerce") / 1e9
+    year = pd.to_numeric(df["year"], errors="coerce")
     keep = s.notna() & year.notna()
-    s, year = s[keep], year[keep]
+    s = s[keep]
+    year = year[keep]
     if s.empty:
         return
 
     plt.figure(figsize=(10.5, 5.4))
     plt.plot(year, s, marker="o", linewidth=1.3)
-    plt.axhline(
-        float(s.mean()), linestyle="--", linewidth=1.0,
-        color="dimgray", label=f"Mean: {s.mean():.1f} bn €",
-    )
-    # Shade the min–max band to show the range visually.
+    plt.axhline(float(s.mean()), linestyle="--", linewidth=1.0, color="dimgray", label=f"Mean: {s.mean():.1f} bn €")
     plt.fill_between(year, float(s.min()), float(s.max()), alpha=0.08)
     plt.title("System cost range across weather years")
     plt.xlabel("Weather year")
@@ -338,62 +282,52 @@ def plot_cost_range(df: pd.DataFrame, out_path: Path) -> None:
     plt.close()
 
 
-# ---------------------------------------------------------------------------
-# CLI entry point
-# ---------------------------------------------------------------------------
-
 def main() -> None:
-    """
-    Merge run and input summaries, compute cost/capacity sensitivity metrics,
-    produce clustered weather-stress scatter plots, and write all outputs.
-    """
-    ap = argparse.ArgumentParser(
-        description="Investment and cost sensitivity summary for pypsa-poland."
-    )
-    ap.add_argument("--runs_summary", required=True, type=str,
-                    help="Path to all_runs_summary.csv from weather_year_compare.py.")
-    ap.add_argument("--inputs_csv",   required=True, type=str,
-                    help="Path to weather_year_inputs_summary.csv from weather_year_inputs.py.")
-    ap.add_argument("--out_dir",      required=True, type=str,
-                    help="Output directory for all figures and CSVs.")
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--runs_summary", required=True, type=str)
+    ap.add_argument("--inputs_csv", required=True, type=str)
+    ap.add_argument("--out_dir", required=True, type=str)
     ap.add_argument("--x_bin", default=0.0040, type=float,
-                    help="Bin width for the VRES CF axis in clustered scatter plots.")
-    ap.add_argument("--y_bin", default=0.8,    type=float,
-                    help="Bin width for the electricity-for-heat axis (TWh) in clustered scatter plots.")
+                    help="Clustering width for VRES CF axis")
+    ap.add_argument("--y_bin", default=0.8, type=float,
+                    help="Clustering width for electricity-for-heat axis in TWh")
     args = ap.parse_args()
 
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     runs_df = safe_numeric(pd.read_csv(args.runs_summary))
-    inp_df  = safe_numeric(pd.read_csv(args.inputs_csv))
+    inp_df = safe_numeric(pd.read_csv(args.inputs_csv))
 
     if "year" not in runs_df.columns or "year" not in inp_df.columns:
-        raise ValueError("Both input files must contain a 'year' column.")
+        raise ValueError("Both inputs must contain a 'year' column.")
 
     runs_df["year"] = pd.to_numeric(runs_df["year"], errors="coerce")
-    inp_df["year"]  = pd.to_numeric(inp_df["year"],  errors="coerce")
+    inp_df["year"] = pd.to_numeric(inp_df["year"], errors="coerce")
 
-    # Inner join on year so only years present in both files are analysed.
     merged = runs_df.merge(inp_df, on="year", how="inner")
     merged = merged.dropna(subset=["year"]).copy()
 
+    # ------------------------------------------------------------------
     # Cost range summary
+    # ------------------------------------------------------------------
     cost_rows = []
     if "objective" in merged.columns:
         cost = pd.to_numeric(merged["objective"], errors="coerce")
         cost_rows.append({
-            "metric":       "objective",
-            "min_bn_eur":   float(cost.min()  / 1e9),
-            "max_bn_eur":   float(cost.max()  / 1e9),
-            "mean_bn_eur":  float(cost.mean() / 1e9),
+            "metric": "objective",
+            "min_bn_eur": float(cost.min() / 1e9),
+            "max_bn_eur": float(cost.max() / 1e9),
+            "mean_bn_eur": float(cost.mean() / 1e9),
             "range_bn_eur": float((cost.max() - cost.min()) / 1e9),
-            "cv":           coefficient_of_variation(cost),
+            "cv": coefficient_of_variation(cost),
         })
     pd.DataFrame(cost_rows).to_csv(out_dir / "cost_range_summary.csv", index=False)
     plot_cost_range(merged, out_dir / "cost_range_by_year.png")
 
+    # ------------------------------------------------------------------
     # Capacity / investment sensitivity summary
+    # ------------------------------------------------------------------
     candidate_cols = [
         c for c in merged.columns
         if (
@@ -416,14 +350,14 @@ def main() -> None:
         if len(s) < 2:
             continue
         cap_rows.append({
-            "metric":      c,
+            "metric": c,
             "pretty_name": pretty_name(c),
-            "mean":  float(s.mean()),
-            "std":   float(s.std(ddof=0)),
-            "min":   float(s.min()),
-            "max":   float(s.max()),
+            "mean": float(s.mean()),
+            "std": float(s.std(ddof=0)),
+            "min": float(s.min()),
+            "max": float(s.max()),
             "range": float(s.max() - s.min()),
-            "cv":    coefficient_of_variation(s),
+            "cv": coefficient_of_variation(s),
         })
 
     cap_df = pd.DataFrame(cap_rows).sort_values("cv", ascending=False)
@@ -433,13 +367,13 @@ def main() -> None:
     variable_caps = choose_variable_capacity_metrics(merged, max_n=8)
     plot_capacity_trajectories(merged, variable_caps, out_dir / "selected_capacity_trajectories.png")
 
-    # Clustered weather-stress scatter plots
-    # Each plot places years in VRES-CF × electricity-for-heat space, coloured
-    # by a different output metric to show which weather regimes drive investment.
+    # ------------------------------------------------------------------
+    # Clustered weather scatter plots
+    # ------------------------------------------------------------------
     base_needed = {"year", "cf_vres_combined_annual", "elec_for_heat_annual_mwh"}
     if base_needed.issubset(set(merged.columns)):
         color_metrics = choose_default_color_metrics(merged)
-        scatter_rows  = []
+        scatter_rows = []
         for c in color_metrics:
             clustered = clustered_scatter_table(
                 merged,
@@ -455,10 +389,7 @@ def main() -> None:
             _, color_unit = scale_series(pd.to_numeric(merged[c], errors="coerce"), c)
             label = pretty_name(c)
             if color_unit:
-                label = (
-                    label.replace(" (MW)", "").replace(" (MWh)", "").replace(" (p.u.)", "")
-                    + f" [{color_unit}]"
-                )
+                label = f"{label.replace(' (MW)', '').replace(' (MWh)', '').replace(' (p.u.)', '')} [{color_unit}]"
 
             out_name = f"clustered_scatter_{c.replace('/', '_')}.png"
             plot_clustered_scatter(
@@ -467,16 +398,14 @@ def main() -> None:
                 color_label=label,
                 out_path=out_dir / out_name,
             )
-            clustered.assign(color_metric=c).to_csv(
-                out_dir / f"clustered_points_{c}.csv", index=False
-            )
+            clustered.assign(color_metric=c).to_csv(out_dir / f"clustered_points_{c}.csv", index=False)
             scatter_rows.append({"color_metric": c, "n_clusters": len(clustered), "label": label})
 
         pd.DataFrame(scatter_rows).to_csv(out_dir / "clustered_scatter_inventory.csv", index=False)
 
-    # Focused input-output correlations
-    # Restricts to a curated set of inputs and outputs most relevant to
-    # investment decisions, rather than computing the full cross-product.
+    # ------------------------------------------------------------------
+    # Focused input-output correlations for investment metrics
+    # ------------------------------------------------------------------
     focus_inputs = [
         c for c in [
             "cf_vres_combined_annual",
@@ -513,13 +442,12 @@ def main() -> None:
     for i_col in focus_inputs:
         x = pd.to_numeric(merged[i_col], errors="coerce")
         for o_col in focus_outputs:
-            y    = pd.to_numeric(merged[o_col], errors="coerce")
+            y = pd.to_numeric(merged[o_col], errors="coerce")
             both = pd.concat([x, y], axis=1).dropna()
             if len(both) < 5:
                 continue
             x_valid = both.iloc[:, 0]
             y_valid = both.iloc[:, 1]
-            # Skip near-constant series to avoid spurious correlation values.
             if float(x_valid.std(ddof=0)) == 0.0:
                 continue
             if float(y_valid.std(ddof=0)) == 0.0:
@@ -527,10 +455,10 @@ def main() -> None:
             corr = x_valid.corr(y_valid)
             if pd.notna(corr):
                 corr_rows.append({
-                    "input_metric":  i_col,
+                    "input_metric": i_col,
                     "output_metric": o_col,
-                    "corr":          float(corr),
-                    "abs_corr":      float(abs(corr)),
+                    "corr": float(corr),
+                    "abs_corr": float(abs(corr)),
                 })
 
     corr_df = pd.DataFrame(corr_rows).sort_values("abs_corr", ascending=False)

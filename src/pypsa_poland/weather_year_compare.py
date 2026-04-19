@@ -18,6 +18,10 @@
 #   python weather_year_compare.py --runs_root <folder>
 #   python weather_year_compare.py --runs_root <folder> --inputs_csv <path> --out_dir <path>
 
+# & C:/Users/adria/anaconda3/envs/pypsa-legacy/python.exe c:/Users/adria/MODEL_PyPSA/Core/pypsa-poland_ADRIAN/src/pypsa_poland/weather_year_compare.py 
+# --runs_root C:/Users/adria/MODEL_PyPSA/Core/runs --inputs_csv C:/Users/adria/MODEL_PyPSA/Core/weather_year_inputs/weather_year_inputs_summary.csv 
+# --out_dir C:/Users/adria/MODEL_PyPSA/Core/weather_year_comparison
+
 from __future__ import annotations
 
 import argparse

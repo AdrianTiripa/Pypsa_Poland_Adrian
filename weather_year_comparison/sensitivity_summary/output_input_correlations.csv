@@ -1,0 +1,601 @@
+input_metric,output_metric,corr,abs_corr,n_obs
+heat_demand_annual_mwh,load_heat_mwh,0.999745533,0.999745533,86
+heat_demand_annual_mwh,total_annual_load_mwh,0.999745533,0.999745533,86
+elec_for_heat_annual_mwh,load_heat_mwh,0.998523721,0.998523721,86
+elec_for_heat_annual_mwh,total_annual_load_mwh,0.998523721,0.998523721,86
+cop_annual_mean,load_heat_mwh,-0.937391812,0.937391812,86
+cop_annual_mean,total_annual_load_mwh,-0.937391812,0.937391812,86
+heat_demand_peak_mw,peak_load_mw,0.885403519,0.885403519,86
+stress_peak_block,peak_load_mw,0.883785312,0.883785312,86
+elec_for_heat_peak_mw,peak_load_mw,0.881960506,0.881960506,86
+cf_vres_combined_annual,gen_wind_mwh,0.859013322,0.859013322,86
+cop_winter_mean,load_heat_mwh,-0.797868322,0.797868322,86
+cop_winter_mean,total_annual_load_mwh,-0.797868322,0.797868322,86
+stress_score,load_heat_mwh,0.794049189,0.794049189,86
+stress_score,total_annual_load_mwh,0.794049189,0.794049189,86
+cold_stress_hours_cop_lt2,load_heat_mwh,0.772660802,0.772660802,86
+cold_stress_hours_cop_lt2,total_annual_load_mwh,0.772660802,0.772660802,86
+cop_winter_mean,peak_load_mw,-0.763668978,0.763668978,86
+stress_energy_block,objective,0.743164107,0.743164107,86
+cf_vres_combined_annual,curtailment_wind_offshore_mwh,0.726694996,0.726694996,86
+cop_winter_mean,heat_pump_total_mw,-0.720978013,0.720978013,86
+stress_energy_block,total_annual_load_mwh,0.718352057,0.718352057,86
+stress_energy_block,load_heat_mwh,0.718352057,0.718352057,86
+stress_score,heat_pump_total_mw,0.712228986,0.712228986,86
+heat_demand_peak_mw,heat_pump_total_mw,0.702922296,0.702922296,86
+stress_peak_block,heat_pump_total_mw,0.702661013,0.702661013,86
+elec_for_heat_peak_mw,heat_pump_total_mw,0.702214376,0.702214376,86
+stress_score,peak_load_mw,0.6843558,0.6843558,86
+stress_score,objective,0.683016425,0.683016425,86
+stress_energy_block,heat_pump_total_mw,0.677374053,0.677374053,86
+stress_energy_block,gen_Biogas plant_mwh,0.655368581,0.655368581,86
+heat_demand_peak_mw,load_heat_mwh,0.648543393,0.648543393,86
+heat_demand_peak_mw,total_annual_load_mwh,0.648543393,0.648543393,86
+stress_energy_block,storage_energy_hot_water_mwh,0.647728927,0.647728927,86
+stress_energy_block,storage_power_hot_water_mw,0.647728927,0.647728927,86
+stress_peak_block,load_heat_mwh,0.647531552,0.647531552,86
+stress_peak_block,total_annual_load_mwh,0.647531552,0.647531552,86
+elec_for_heat_annual_mwh,heat_pump_total_mw,0.646710689,0.646710689,86
+elec_for_heat_peak_mw,load_heat_mwh,0.646364764,0.646364764,86
+elec_for_heat_peak_mw,total_annual_load_mwh,0.646364764,0.646364764,86
+heat_demand_annual_mwh,heat_pump_total_mw,0.634368641,0.634368641,86
+cf_vres_combined_annual,curtailment_total_mwh,0.61843597,0.61843597,86
+elec_for_heat_annual_mwh,peak_load_mw,0.613393489,0.613393489,86
+heat_demand_annual_mwh,peak_load_mw,0.595517999,0.595517999,86
+cf_vres_combined_winter,objective,-0.592931515,0.592931515,86
+cf_vres_combined_annual,gen_nuclear_mwh,-0.592303351,0.592303351,86
+stress_energy_block,gen_wind_mwh,-0.591604021,0.591604021,86
+cf_vres_combined_annual,curtailment_share_pu,0.589535897,0.589535897,86
+stress_score,gen_Biogas plant_mwh,0.586315201,0.586315201,86
+cf_vres_combined_annual,objective,-0.578660212,0.578660212,86
+stress_energy_block,cap_gen_PV ground_mw,0.578474918,0.578474918,86
+stress_energy_block,curtailment_wind_offshore_mwh,-0.567846543,0.567846543,86
+cop_winter_mean,objective,-0.566447892,0.566447892,86
+stress_score,storage_energy_hot_water_mwh,0.562268598,0.562268598,86
+stress_score,storage_power_hot_water_mw,0.562268598,0.562268598,86
+elec_for_heat_annual_mwh,objective,0.534077001,0.534077001,86
+heat_demand_annual_mwh,objective,0.523870442,0.523870442,86
+stress_score,cap_gen_PV ground_mw,0.521766945,0.521766945,86
+cf_vres_combined_winter,heat_pump_total_mw,-0.515430944,0.515430944,86
+cf_vres_combined_annual,storage_energy_hot_water_mwh,-0.51223566,0.51223566,86
+cf_vres_combined_annual,storage_power_hot_water_mw,-0.51223566,0.51223566,86
+cf_vres_combined_annual,gen_Biogas plant_mwh,-0.502163704,0.502163704,86
+stress_energy_block,gen_PV ground_mwh,0.499381721,0.499381721,86
+stress_score,gen_Natural gas_mwh,0.498503257,0.498503257,86
+stress_energy_block,curtailment_share_pu,-0.493835307,0.493835307,86
+cf_vres_combined_annual,cap_gen_PV ground_mw,-0.493424851,0.493424851,86
+cop_winter_mean,gen_Biogas plant_mwh,-0.492910659,0.492910659,86
+cf_vres_combined_winter,gen_Biogas plant_mwh,-0.481873015,0.481873015,86
+cf_vres_combined_winter,storage_energy_hot_water_mwh,-0.481557342,0.481557342,86
+cf_vres_combined_winter,storage_power_hot_water_mw,-0.481557342,0.481557342,86
+stress_energy_block,electrolyser_total_mw,0.481309704,0.481309704,86
+cop_winter_mean,storage_energy_hot_water_mwh,-0.480651491,0.480651491,86
+cop_winter_mean,storage_power_hot_water_mw,-0.480651491,0.480651491,86
+elec_for_heat_annual_mwh,gen_Biogas plant_mwh,0.479795249,0.479795249,86
+cop_annual_mean,heat_pump_total_mw,-0.478008085,0.478008085,86
+stress_energy_block,gen_Natural gas_mwh,0.476922658,0.476922658,86
+cf_vres_combined_annual,curtailment_wind_offshore_share,0.475156016,0.475156016,86
+heat_demand_annual_mwh,gen_Biogas plant_mwh,0.472819866,0.472819866,86
+stress_energy_block,curtailment_total_mwh,-0.469519094,0.469519094,86
+cf_vres_combined_annual,gen_PV ground_mwh,-0.46775434,0.46775434,86
+stress_score,gen_PV ground_mwh,0.4590255,0.4590255,86
+elec_for_heat_annual_mwh,storage_energy_hot_water_mwh,0.456949862,0.456949862,86
+elec_for_heat_annual_mwh,storage_power_hot_water_mw,0.456949862,0.456949862,86
+heat_demand_annual_mwh,storage_energy_hot_water_mwh,0.455102275,0.455102275,86
+heat_demand_annual_mwh,storage_power_hot_water_mw,0.455102275,0.455102275,86
+cop_winter_mean,cap_gen_PV ground_mw,-0.448851631,0.448851631,86
+elec_for_heat_peak_mw,objective,0.444897663,0.444897663,86
+stress_peak_block,objective,0.442590575,0.442590575,86
+heat_demand_peak_mw,objective,0.440112365,0.440112365,86
+cf_vres_combined_winter,gen_wind_mwh,0.433193898,0.433193898,86
+cf_vres_combined_annual,electrolyser_total_mw,-0.431800801,0.431800801,86
+cop_winter_mean,gen_PV ground_mwh,-0.430746679,0.430746679,86
+cf_vres_combined_winter,gen_Natural gas_mwh,-0.430408999,0.430408999,86
+cop_winter_mean,gen_Natural gas_mwh,-0.429204685,0.429204685,86
+stress_energy_block,peak_load_mw,0.428906368,0.428906368,86
+dark_doldrums_hours,gen_nuclear_mwh,0.419788328,0.419788328,86
+stress_persistence_block,load_heat_mwh,0.412818497,0.412818497,86
+stress_persistence_block,total_annual_load_mwh,0.412818497,0.412818497,86
+heat_demand_peak_mw,storage_energy_hot_water_mwh,0.411461732,0.411461732,86
+heat_demand_peak_mw,storage_power_hot_water_mw,0.411461732,0.411461732,86
+stress_peak_block,storage_energy_hot_water_mwh,0.410020986,0.410020986,86
+stress_peak_block,storage_power_hot_water_mw,0.410020986,0.410020986,86
+elec_for_heat_peak_mw,storage_energy_hot_water_mwh,0.408498587,0.408498587,86
+elec_for_heat_peak_mw,storage_power_hot_water_mw,0.408498587,0.408498587,86
+cop_annual_mean,objective,-0.407472186,0.407472186,86
+cop_annual_mean,peak_load_mw,-0.40412428,0.40412428,86
+cf_vres_combined_winter,elec_transmission_total_mw,-0.403894787,0.403894787,86
+heat_demand_peak_mw,elec_transmission_total_mw,0.398068157,0.398068157,86
+stress_peak_block,elec_transmission_total_mw,0.396468956,0.396468956,86
+elec_for_heat_peak_mw,gen_Biogas plant_mwh,0.395354046,0.395354046,86
+stress_persistence_block,objective,0.395276451,0.395276451,86
+elec_for_heat_peak_mw,elec_transmission_total_mw,0.394795041,0.394795041,86
+stress_peak_block,gen_Biogas plant_mwh,0.394439943,0.394439943,86
+heat_demand_peak_mw,gen_Biogas plant_mwh,0.393397323,0.393397323,86
+cf_vres_combined_winter,load_heat_mwh,-0.387578193,0.387578193,86
+cf_vres_combined_winter,total_annual_load_mwh,-0.387578193,0.387578193,86
+dark_doldrums_hours,gen_wind_mwh,-0.387385134,0.387385134,86
+cf_vres_combined_annual,heat_pump_total_mw,-0.379816612,0.379816612,86
+cf_vres_combined_winter,cap_gen_PV ground_mw,-0.377010892,0.377010892,86
+cop_annual_mean,storage_energy_hot_water_mwh,-0.376575327,0.376575327,86
+cop_annual_mean,storage_power_hot_water_mw,-0.376575327,0.376575327,86
+cop_annual_mean,gen_Biogas plant_mwh,-0.374402558,0.374402558,86
+stress_energy_block,h2_pipeline_total_mw,0.373821334,0.373821334,86
+stress_energy_block,curtailment_wind_offshore_share,-0.369252382,0.369252382,86
+elec_for_heat_annual_mwh,cap_gen_PV ground_mw,0.369141716,0.369141716,86
+elec_for_heat_annual_mwh,gen_Natural gas_mwh,0.367597862,0.367597862,86
+dark_doldrums_hours,objective,0.365328757,0.365328757,86
+elec_for_heat_peak_mw,gen_Natural gas_mwh,0.365140914,0.365140914,86
+heat_demand_annual_mwh,cap_gen_PV ground_mw,0.36370321,0.36370321,86
+stress_peak_block,gen_Natural gas_mwh,0.361931692,0.361931692,86
+cf_vres_combined_winter,electrolyser_total_mw,-0.359219144,0.359219144,86
+cf_vres_combined_winter,curtailment_wind_offshore_mwh,0.358689607,0.358689607,86
+heat_demand_peak_mw,gen_Natural gas_mwh,0.358554752,0.358554752,86
+heat_demand_annual_mwh,gen_Natural gas_mwh,0.354417863,0.354417863,86
+stress_score,gen_wind_mwh,-0.352568906,0.352568906,86
+stress_energy_block,gen_nuclear_mwh,0.348966593,0.348966593,86
+cf_vres_combined_annual,gen_Natural gas_mwh,-0.348408311,0.348408311,86
+stress_persistence_block,cap_gen_PV ground_mw,0.344133917,0.344133917,86
+cf_vres_combined_winter,peak_load_mw,-0.34161538,0.34161538,86
+dark_doldrums_hours,cap_gen_PV ground_mw,0.336138513,0.336138513,86
+dark_doldrums_hours,curtailment_wind_offshore_mwh,-0.335842997,0.335842997,86
+stress_energy_block,h2_network_abs_flow_mwh,0.329633372,0.329633372,86
+stress_score,electrolyser_total_mw,0.32693211,0.32693211,86
+stress_score,elec_transmission_total_mw,0.317003835,0.317003835,86
+stress_energy_block,curtailment_PV_ground_share,0.313416042,0.313416042,86
+cop_winter_mean,elec_transmission_total_mw,-0.313098986,0.313098986,86
+cf_vres_combined_annual,h2_pipeline_total_mw,-0.311223699,0.311223699,86
+cold_stress_hours_cop_lt2,heat_pump_total_mw,0.30935852,0.30935852,86
+cf_vres_combined_winter,gen_PV ground_mwh,-0.306118227,0.306118227,86
+cold_stress_hours_cop_lt2,storage_energy_hot_water_mwh,0.305926677,0.305926677,86
+cold_stress_hours_cop_lt2,storage_power_hot_water_mw,0.305926677,0.305926677,86
+elec_for_heat_peak_mw,cap_gen_PV ground_mw,0.305834247,0.305834247,86
+elec_for_heat_peak_mw,gen_PV ground_mwh,0.305007006,0.305007006,86
+stress_peak_block,cap_gen_PV ground_mw,0.304139212,0.304139212,86
+stress_peak_block,gen_PV ground_mwh,0.302384645,0.302384645,86
+heat_demand_peak_mw,cap_gen_PV ground_mw,0.302324284,0.302324284,86
+cop_annual_mean,transmission_mean_utilisation,-0.302248858,0.302248858,86
+heat_demand_annual_mwh,transmission_mean_utilisation,0.302216298,0.302216298,86
+stress_persistence_block,gen_Natural gas_mwh,0.301015358,0.301015358,86
+elec_for_heat_annual_mwh,transmission_mean_utilisation,0.300054337,0.300054337,86
+elec_for_heat_annual_mwh,elec_transmission_total_mw,0.300028491,0.300028491,86
+heat_demand_peak_mw,gen_PV ground_mwh,0.299623397,0.299623397,86
+cf_vres_combined_winter,curtailment_share_pu,0.298912086,0.298912086,86
+stress_persistence_block,gen_Biogas plant_mwh,0.296092535,0.296092535,86
+stress_score,curtailment_wind_offshore_mwh,-0.294256698,0.294256698,86
+stress_energy_block,curtailment_PV_ground_mwh,0.294034416,0.294034416,86
+dark_doldrums_hours,gen_PV ground_mwh,0.292529551,0.292529551,86
+heat_demand_annual_mwh,elec_transmission_total_mw,0.291941935,0.291941935,86
+cf_vres_combined_winter,curtailment_total_mwh,0.291058033,0.291058033,86
+dark_doldrums_hours,curtailment_total_mwh,-0.289470208,0.289470208,86
+cop_annual_mean,cap_gen_PV ground_mw,-0.286935773,0.286935773,86
+wind_drought_max_hours,gen_Natural gas_mwh,0.286593929,0.286593929,86
+heat_demand_annual_mwh,electrolyser_total_mw,0.285288745,0.285288745,86
+elec_for_heat_annual_mwh,electrolyser_total_mw,0.28411157,0.28411157,86
+cf_vres_combined_annual,curtailment_PV_ground_share,-0.282365201,0.282365201,86
+cop_winter_mean,curtailment_PV_ground_share,-0.280275218,0.280275218,86
+cop_winter_mean,curtailment_wind_share,-0.278703568,0.278703568,86
+stress_score,storage_energy_flow_mwh,-0.278667329,0.278667329,86
+stress_energy_block,elec_transmission_total_mw,0.277902127,0.277902127,86
+stress_score,curtailment_PV_ground_share,0.276671405,0.276671405,86
+elec_for_heat_annual_mwh,gen_PV ground_mwh,0.273394316,0.273394316,86
+cop_winter_mean,curtailment_wind_mwh,-0.272876936,0.272876936,86
+cop_annual_mean,electrolyser_total_mw,-0.270635938,0.270635938,86
+dark_doldrums_hours,gen_Biogas plant_mwh,0.2705171,0.2705171,86
+heat_demand_peak_mw,gen_nuclear_mwh,-0.267851754,0.267851754,86
+stress_peak_block,gen_nuclear_mwh,-0.267668679,0.267668679,86
+elec_for_heat_peak_mw,gen_nuclear_mwh,-0.267416715,0.267416715,86
+cop_winter_mean,curtailment_PV_ground_mwh,-0.267194113,0.267194113,86
+dark_doldrums_hours,electrolyser_total_mw,0.265720484,0.265720484,86
+cf_vres_combined_annual,curtailment_PV_ground_mwh,-0.263644992,0.263644992,86
+dark_doldrums_hours,gen_wind offshore_mwh,-0.263534918,0.263534918,86
+heat_demand_annual_mwh,gen_PV ground_mwh,0.262381468,0.262381468,86
+stress_score,curtailment_PV_ground_mwh,0.262092932,0.262092932,86
+stress_persistence_block,gen_nuclear_mwh,0.261261205,0.261261205,86
+dark_doldrums_hours,curtailment_share_pu,-0.260071556,0.260071556,86
+stress_persistence_block,gen_PV ground_mwh,0.257799952,0.257799952,86
+cop_annual_mean,h2_pipeline_total_mw,-0.257682949,0.257682949,86
+stress_score,curtailment_share_pu,-0.256183002,0.256183002,86
+cf_vres_combined_annual,h2_network_abs_flow_mwh,-0.255704081,0.255704081,86
+cf_vres_combined_winter,h2_pipeline_total_mw,-0.255645552,0.255645552,86
+stress_score,storage_power_flow_mw,-0.254456316,0.254456316,86
+cop_winter_mean,gen_wind_mwh,0.253059469,0.253059469,86
+stress_score,h2_pipeline_total_mw,0.250660785,0.250660785,86
+wind_drought_max_hours,gen_wind offshore_mwh,-0.2500175,0.2500175,86
+heat_demand_annual_mwh,h2_pipeline_total_mw,0.248963468,0.248963468,86
+cop_annual_mean,h2_network_abs_flow_mwh,-0.248933237,0.248933237,86
+stress_energy_block,transmission_mean_utilisation,0.248532885,0.248532885,86
+elec_for_heat_annual_mwh,h2_pipeline_total_mw,0.246819163,0.246819163,86
+stress_persistence_block,storage_energy_flow_mwh,-0.244343063,0.244343063,86
+cop_winter_mean,electrolyser_total_mw,-0.241552631,0.241552631,86
+dark_doldrums_hours,storage_energy_hot_water_mwh,0.240061101,0.240061101,86
+dark_doldrums_hours,storage_power_hot_water_mw,0.240061101,0.240061101,86
+stress_score,transmission_mean_utilisation,0.238744666,0.238744666,86
+heat_demand_annual_mwh,h2_network_abs_flow_mwh,0.23847165,0.23847165,86
+elec_for_heat_annual_mwh,h2_network_abs_flow_mwh,0.237935119,0.237935119,86
+cf_vres_combined_winter,curtailment_wind_offshore_share,0.237434076,0.237434076,86
+cf_vres_combined_winter,curtailment_PV_ground_share,-0.235892774,0.235892774,86
+cop_annual_mean,gen_Natural gas_mwh,-0.234781994,0.234781994,86
+cold_stress_hours_cop_lt2,objective,0.233852595,0.233852595,86
+cop_winter_mean,transmission_mean_utilisation,-0.23277585,0.23277585,86
+stress_score,h2_network_abs_flow_mwh,0.231912382,0.231912382,86
+cf_vres_combined_annual,gen_wind offshore_mwh,0.231306288,0.231306288,86
+dark_doldrums_hours,gen_Natural gas_mwh,0.227606944,0.227606944,86
+dark_doldrums_hours,storage_energy_flow_mwh,-0.22659929,0.22659929,86
+stress_energy_block,storage_energy_hydrogen_storage_mwh,0.226157509,0.226157509,86
+stress_energy_block,storage_power_hydrogen_storage_mw,0.226157509,0.226157509,86
+stress_persistence_block,gen_wind offshore_mwh,-0.225168772,0.225168772,86
+cf_vres_combined_winter,curtailment_PV_ground_mwh,-0.223824331,0.223824331,86
+cold_stress_hours_cop_lt2,gen_Biogas plant_mwh,0.222072057,0.222072057,86
+cold_stress_hours_cop_lt2,h2_pipeline_total_mw,0.220503223,0.220503223,86
+stress_score,curtailment_total_mwh,-0.220322411,0.220322411,86
+cop_annual_mean,elec_transmission_total_mw,-0.219888255,0.219888255,86
+stress_score,curtailment_wind_share,0.218080129,0.218080129,86
+cold_stress_hours_cop_lt2,storage_power_hydrogen_storage_other_mw,0.216720665,0.216720665,86
+cold_stress_hours_cop_lt2,electrolyser_total_mw,0.216024702,0.216024702,86
+cf_vres_combined_winter,h2_network_abs_flow_mwh,-0.215648569,0.215648569,86
+stress_persistence_block,cap_gen_Natural gas_mw,0.214827303,0.214827303,86
+cf_vres_combined_annual,curtailment_wind_share,-0.214005898,0.214005898,86
+elec_for_heat_peak_mw,curtailment_wind_mwh,0.212223474,0.212223474,86
+cold_stress_hours_cop_lt2,cap_gen_PV ground_mw,0.211905819,0.211905819,86
+stress_persistence_block,storage_energy_hot_water_mwh,0.210975931,0.210975931,86
+stress_persistence_block,storage_power_hot_water_mw,0.210975931,0.210975931,86
+stress_energy_block,curtailment_wind_share,0.21088413,0.21088413,86
+heat_demand_peak_mw,storage_power_flow_mw,-0.210656561,0.210656561,86
+stress_persistence_block,storage_power_flow_mw,-0.210508889,0.210508889,86
+elec_for_heat_peak_mw,curtailment_wind_share,0.210297108,0.210297108,86
+stress_peak_block,storage_power_flow_mw,-0.209703059,0.209703059,86
+stress_peak_block,curtailment_wind_mwh,0.209632656,0.209632656,86
+heat_demand_peak_mw,storage_energy_flow_mwh,-0.209309793,0.209309793,86
+cold_stress_hours_cop_lt2,storage_energy_hydrogen_storage_other_mwh,0.208958521,0.208958521,86
+elec_for_heat_peak_mw,storage_power_flow_mw,-0.208712253,0.208712253,86
+cold_stress_hours_cop_lt2,h2_network_abs_flow_mwh,0.208478971,0.208478971,86
+stress_peak_block,storage_energy_flow_mwh,-0.208123491,0.208123491,86
+stress_peak_block,curtailment_wind_share,0.207686949,0.207686949,86
+heat_demand_peak_mw,curtailment_wind_mwh,0.206929319,0.206929319,86
+elec_for_heat_peak_mw,storage_energy_flow_mwh,-0.206905102,0.206905102,86
+stress_score,gen_wind offshore_mwh,-0.206895001,0.206895001,86
+heat_demand_peak_mw,curtailment_wind_share,0.204964403,0.204964403,86
+stress_score,cap_gen_Natural gas_mw,0.203903075,0.203903075,86
+cf_vres_combined_annual,storage_energy_hydrogen_storage_mwh,-0.198143066,0.198143066,86
+cf_vres_combined_annual,storage_power_hydrogen_storage_mw,-0.198143066,0.198143066,86
+heat_demand_peak_mw,transmission_mean_utilisation,0.19700471,0.19700471,86
+cold_stress_hours_cop_lt2,peak_load_mw,0.197002392,0.197002392,86
+stress_peak_block,transmission_mean_utilisation,0.196883561,0.196883561,86
+elec_for_heat_peak_mw,transmission_mean_utilisation,0.196711464,0.196711464,86
+stress_score,curtailment_wind_mwh,0.196231059,0.196231059,86
+elec_for_heat_peak_mw,curtailment_PV_ground_share,0.195892956,0.195892956,86
+dark_doldrums_hours,storage_energy_hydrogen_storage_other_mwh,-0.195365291,0.195365291,86
+stress_peak_block,curtailment_PV_ground_share,0.194842368,0.194842368,86
+cf_vres_combined_winter,storage_power_hydrogen_storage_mw,-0.194549602,0.194549602,86
+cf_vres_combined_winter,storage_energy_hydrogen_storage_mwh,-0.194549602,0.194549602,86
+heat_demand_peak_mw,curtailment_PV_ground_share,0.193715714,0.193715714,86
+stress_energy_block,storage_energy_flow_mwh,-0.192002396,0.192002396,86
+cold_stress_hours_cop_lt2,gen_wind_mwh,0.191497914,0.191497914,86
+dark_doldrums_hours,storage_power_hydrogen_storage_other_mw,-0.19073152,0.19073152,86
+wind_drought_max_hours,objective,0.188938783,0.188938783,86
+elec_for_heat_peak_mw,curtailment_PV_ground_mwh,0.188763021,0.188763021,86
+dark_doldrums_hours,storage_power_flow_mw,-0.188677436,0.188677436,86
+stress_peak_block,curtailment_PV_ground_mwh,0.187921324,0.187921324,86
+heat_demand_peak_mw,curtailment_PV_ground_mwh,0.187009866,0.187009866,86
+dark_doldrums_hours,storage_power_hydrogen_storage_mw,0.186759441,0.186759441,86
+dark_doldrums_hours,storage_energy_hydrogen_storage_mwh,0.186759441,0.186759441,86
+elec_for_heat_annual_mwh,curtailment_PV_ground_share,0.183718871,0.183718871,86
+stress_energy_block,gen_wind offshore_mwh,-0.183686768,0.183686768,86
+elec_for_heat_annual_mwh,storage_energy_flow_mwh,-0.182423776,0.182423776,86
+dark_doldrums_hours,h2_pipeline_total_mw,0.182421952,0.182421952,86
+heat_demand_annual_mwh,storage_energy_flow_mwh,-0.182405673,0.182405673,86
+heat_demand_annual_mwh,curtailment_PV_ground_share,0.180457349,0.180457349,86
+cop_winter_mean,gen_nuclear_mwh,0.179373511,0.179373511,86
+elec_for_heat_peak_mw,cap_gen_Natural gas_mw,0.175626088,0.175626088,86
+stress_peak_block,cap_gen_Natural gas_mw,0.174336925,0.174336925,86
+cold_stress_hours_cop_lt2,storage_power_hydrogen_storage_mw,0.174225987,0.174225987,86
+cold_stress_hours_cop_lt2,storage_energy_hydrogen_storage_mwh,0.174225987,0.174225987,86
+cop_annual_mean,storage_power_hydrogen_storage_mw,-0.173906146,0.173906146,86
+cop_annual_mean,storage_energy_hydrogen_storage_mwh,-0.173906146,0.173906146,86
+elec_for_heat_annual_mwh,curtailment_PV_ground_mwh,0.173721334,0.173721334,86
+heat_demand_peak_mw,cap_gen_Natural gas_mw,0.172972367,0.172972367,86
+heat_demand_annual_mwh,curtailment_PV_ground_mwh,0.170856838,0.170856838,86
+cop_annual_mean,storage_power_hydrogen_storage_other_mw,-0.170278324,0.170278324,86
+cf_vres_combined_winter,curtailment_wind_share,-0.169293833,0.169293833,86
+cold_stress_hours_cop_lt2,transmission_mean_utilisation,0.168730639,0.168730639,86
+cop_annual_mean,cap_gen_Natural gas_mw,-0.168254824,0.168254824,86
+dark_doldrums_hours,cap_gen_Natural gas_mw,0.166666122,0.166666122,86
+cop_annual_mean,storage_energy_hydrogen_storage_other_mwh,-0.166656621,0.166656621,86
+stress_persistence_block,electrolyser_total_mw,0.163981963,0.163981963,86
+cop_annual_mean,storage_energy_flow_mwh,0.163947321,0.163947321,86
+stress_energy_block,curtailment_wind_mwh,0.162810337,0.162810337,86
+dark_doldrums_hours,curtailment_wind_offshore_share,-0.159442124,0.159442124,86
+stress_energy_block,storage_power_flow_mw,-0.158771554,0.158771554,86
+elec_for_heat_annual_mwh,storage_power_flow_mw,-0.157724983,0.157724983,86
+heat_demand_annual_mwh,storage_power_flow_mw,-0.157520593,0.157520593,86
+elec_for_heat_annual_mwh,cap_gen_Natural gas_mw,0.157056772,0.157056772,86
+wind_drought_max_hours,gen_PV ground_mwh,0.154329624,0.154329624,86
+heat_demand_annual_mwh,cap_gen_Natural gas_mw,0.153043452,0.153043452,86
+stress_persistence_block,gen_wind_mwh,-0.150650829,0.150650829,86
+stress_persistence_block,curtailment_wind_offshore_mwh,-0.149133393,0.149133393,86
+stress_score,curtailment_wind_offshore_share,-0.14827638,0.14827638,86
+wind_drought_max_hours,cap_gen_Natural gas_mw,0.146093604,0.146093604,86
+cop_winter_mean,gen_wind offshore_mwh,0.145705619,0.145705619,86
+cop_winter_mean,curtailment_wind_offshore_mwh,0.143421257,0.143421257,86
+heat_demand_annual_mwh,storage_power_hydrogen_storage_mw,0.142885143,0.142885143,86
+heat_demand_annual_mwh,storage_energy_hydrogen_storage_mwh,0.142885143,0.142885143,86
+stress_persistence_block,storage_power_hydrogen_storage_mw,0.142595157,0.142595157,86
+stress_persistence_block,storage_energy_hydrogen_storage_mwh,0.142595157,0.142595157,86
+wind_drought_max_hours,curtailment_wind_offshore_share,0.141693911,0.141693911,86
+stress_persistence_block,h2_pipeline_total_mw,0.141654612,0.141654612,86
+wind_drought_max_hours,cap_gen_PV ground_mw,0.141230551,0.141230551,86
+cf_vres_combined_winter,storage_power_hydrogen_storage_other_mw,-0.141077157,0.141077157,86
+cop_annual_mean,storage_power_flow_mw,0.138652086,0.138652086,86
+elec_for_heat_annual_mwh,storage_power_hydrogen_storage_mw,0.138645206,0.138645206,86
+elec_for_heat_annual_mwh,storage_energy_hydrogen_storage_mwh,0.138645206,0.138645206,86
+heat_demand_peak_mw,electrolyser_total_mw,0.138218614,0.138218614,86
+stress_peak_block,electrolyser_total_mw,0.137984798,0.137984798,86
+elec_for_heat_peak_mw,electrolyser_total_mw,0.137718338,0.137718338,86
+cop_annual_mean,gen_PV ground_mwh,-0.137018289,0.137018289,86
+cf_vres_combined_annual,curtailment_wind_mwh,-0.137014964,0.137014964,86
+stress_persistence_block,heat_pump_total_mw,0.136960314,0.136960314,86
+cf_vres_combined_winter,transmission_peak_utilisation,-0.136327241,0.136327241,86
+cop_winter_mean,h2_network_abs_flow_mwh,-0.135226081,0.135226081,86
+cop_annual_mean,gen_wind_mwh,-0.134067403,0.134067403,86
+stress_score,storage_power_hydrogen_storage_mw,0.133058577,0.133058577,86
+stress_score,storage_energy_hydrogen_storage_mwh,0.133058577,0.133058577,86
+elec_for_heat_annual_mwh,curtailment_share_pu,-0.132803245,0.132803245,86
+heat_demand_annual_mwh,curtailment_share_pu,-0.131490993,0.131490993,86
+cold_stress_hours_cop_lt2,storage_energy_flow_mwh,-0.131171339,0.131171339,86
+cop_annual_mean,curtailment_PV_ground_share,-0.129492876,0.129492876,86
+cop_winter_mean,h2_pipeline_total_mw,-0.12921152,0.12921152,86
+cf_vres_combined_winter,storage_energy_hydrogen_storage_other_mwh,-0.128877265,0.128877265,86
+cop_winter_mean,curtailment_share_pu,0.127960138,0.127960138,86
+wind_drought_max_hours,storage_energy_flow_mwh,-0.127262328,0.127262328,86
+cop_annual_mean,curtailment_share_pu,0.125960224,0.125960224,86
+elec_for_heat_peak_mw,storage_energy_hydrogen_storage_other_mwh,-0.124255951,0.124255951,86
+wind_drought_max_hours,electrolyser_total_mw,-0.12400433,0.12400433,86
+elec_for_heat_peak_mw,h2_network_abs_flow_mwh,0.123969173,0.123969173,86
+cf_vres_combined_winter,curtailment_wind_mwh,-0.123918408,0.123918408,86
+cf_vres_combined_annual,elec_transmission_total_mw,-0.123787525,0.123787525,86
+stress_peak_block,storage_energy_hydrogen_storage_other_mwh,-0.123449111,0.123449111,86
+stress_peak_block,h2_network_abs_flow_mwh,0.123411843,0.123411843,86
+heat_demand_peak_mw,h2_network_abs_flow_mwh,0.122808602,0.122808602,86
+heat_demand_peak_mw,storage_energy_hydrogen_storage_other_mwh,-0.122591109,0.122591109,86
+wind_drought_max_hours,elec_transmission_total_mw,-0.122297192,0.122297192,86
+wind_drought_max_hours,h2_network_abs_flow_mwh,-0.121960878,0.121960878,86
+stress_persistence_block,curtailment_total_mwh,-0.121379199,0.121379199,86
+cop_annual_mean,curtailment_PV_ground_mwh,-0.121315587,0.121315587,86
+wind_drought_max_hours,storage_power_flow_mw,-0.120994981,0.120994981,86
+stress_persistence_block,curtailment_PV_ground_share,0.12097995,0.12097995,86
+stress_persistence_block,curtailment_share_pu,-0.120866207,0.120866207,86
+dark_doldrums_hours,h2_network_abs_flow_mwh,0.120210445,0.120210445,86
+dark_doldrums_hours,heat_pump_total_mw,0.118489312,0.118489312,86
+elec_for_heat_peak_mw,storage_power_hydrogen_storage_other_mw,-0.118127481,0.118127481,86
+wind_drought_max_hours,heat_pump_total_mw,-0.117624974,0.117624974,86
+stress_peak_block,storage_power_hydrogen_storage_other_mw,-0.117306463,0.117306463,86
+heat_demand_peak_mw,storage_power_hydrogen_storage_other_mw,-0.116435689,0.116435689,86
+elec_for_heat_peak_mw,gen_wind_mwh,-0.116131128,0.116131128,86
+cf_vres_combined_annual,total_annual_load_mwh,-0.114149493,0.114149493,86
+cf_vres_combined_annual,load_heat_mwh,-0.114149493,0.114149493,86
+stress_peak_block,gen_wind_mwh,-0.11337548,0.11337548,86
+stress_persistence_block,curtailment_PV_ground_mwh,0.112518555,0.112518555,86
+cop_winter_mean,storage_power_flow_mw,0.112289087,0.112289087,86
+cop_winter_mean,storage_energy_flow_mwh,0.11172105,0.11172105,86
+cop_winter_mean,cap_gen_Natural gas_mw,-0.111546635,0.111546635,86
+heat_demand_peak_mw,gen_wind_mwh,-0.110530525,0.110530525,86
+cold_stress_hours_cop_lt2,cap_gen_Natural gas_mw,0.109587146,0.109587146,86
+dark_doldrums_hours,curtailment_PV_ground_share,0.108949583,0.108949583,86
+cf_vres_combined_annual,storage_energy_flow_mwh,0.108478266,0.108478266,86
+cold_stress_hours_cop_lt2,storage_power_flow_mw,-0.106482479,0.106482479,86
+elec_for_heat_annual_mwh,curtailment_wind_mwh,0.105907068,0.105907068,86
+cold_stress_hours_cop_lt2,curtailment_PV_ground_share,0.105674975,0.105674975,86
+wind_drought_max_hours,gen_Biogas plant_mwh,0.105260283,0.105260283,86
+cold_stress_hours_cop_lt2,curtailment_PV_ground_mwh,0.10369015,0.10369015,86
+cf_vres_combined_winter,cap_gen_Natural gas_mw,-0.102061035,0.102061035,86
+elec_for_heat_peak_mw,gen_wind offshore_mwh,-0.101013424,0.101013424,86
+cf_vres_combined_winter,gen_wind offshore_mwh,0.100122933,0.100122933,86
+elec_for_heat_annual_mwh,curtailment_wind_offshore_mwh,-0.09983556,0.09983556,86
+stress_peak_block,gen_wind offshore_mwh,-0.097904132,0.097904132,86
+heat_demand_annual_mwh,curtailment_wind_mwh,0.097694249,0.097694249,86
+elec_for_heat_annual_mwh,curtailment_wind_share,0.097601409,0.097601409,86
+cold_stress_hours_cop_lt2,gen_wind offshore_mwh,0.097588305,0.097588305,86
+dark_doldrums_hours,curtailment_PV_ground_mwh,0.096608061,0.096608061,86
+elec_for_heat_annual_mwh,gen_nuclear_mwh,-0.096503203,0.096503203,86
+heat_demand_annual_mwh,curtailment_wind_offshore_mwh,-0.096383315,0.096383315,86
+heat_demand_peak_mw,gen_wind offshore_mwh,-0.094702393,0.094702393,86
+wind_drought_max_hours,curtailment_share_pu,0.093803198,0.093803198,86
+wind_drought_max_hours,h2_pipeline_total_mw,-0.092811424,0.092811424,86
+elec_for_heat_peak_mw,h2_pipeline_total_mw,0.09261486,0.09261486,86
+cold_stress_hours_cop_lt2,curtailment_share_pu,-0.092531495,0.092531495,86
+stress_peak_block,h2_pipeline_total_mw,0.092443103,0.092443103,86
+heat_demand_annual_mwh,gen_nuclear_mwh,-0.092342985,0.092342985,86
+heat_demand_peak_mw,h2_pipeline_total_mw,0.092242119,0.092242119,86
+cold_stress_hours_cop_lt2,elec_transmission_total_mw,0.091249769,0.091249769,86
+wind_drought_max_hours,storage_energy_hot_water_mwh,-0.090901702,0.090901702,86
+wind_drought_max_hours,storage_power_hot_water_mw,-0.090901702,0.090901702,86
+stress_persistence_block,h2_network_abs_flow_mwh,0.088850673,0.088850673,86
+heat_demand_annual_mwh,curtailment_wind_share,0.088744887,0.088744887,86
+dark_doldrums_hours,curtailment_wind_share,0.087965914,0.087965914,86
+elec_for_heat_peak_mw,transmission_peak_utilisation,0.087746504,0.087746504,86
+wind_drought_max_hours,transmission_peak_utilisation,-0.086852605,0.086852605,86
+stress_peak_block,transmission_peak_utilisation,0.085073894,0.085073894,86
+cf_vres_combined_annual,storage_power_flow_mw,0.083357772,0.083357772,86
+stress_persistence_block,transmission_mean_utilisation,0.083353591,0.083353591,86
+heat_demand_annual_mwh,storage_power_hydrogen_storage_other_mw,0.082979064,0.082979064,86
+heat_demand_peak_mw,transmission_peak_utilisation,0.082321567,0.082321567,86
+wind_drought_max_hours,gen_wind_mwh,-0.081824146,0.081824146,86
+cf_vres_combined_annual,transmission_mean_utilisation,-0.081412261,0.081412261,86
+stress_score,gen_nuclear_mwh,0.080732691,0.080732691,86
+heat_demand_annual_mwh,storage_energy_hydrogen_storage_other_mwh,0.080564559,0.080564559,86
+cf_vres_combined_winter,gen_nuclear_mwh,-0.080397006,0.080397006,86
+stress_energy_block,cap_gen_Natural gas_mw,0.078086494,0.078086494,86
+wind_drought_max_hours,gen_nuclear_mwh,0.074777724,0.074777724,86
+stress_score,storage_energy_hydrogen_storage_other_mwh,-0.074272323,0.074272323,86
+wind_drought_max_hours,storage_power_hydrogen_storage_other_mw,-0.074043168,0.074043168,86
+cop_annual_mean,curtailment_wind_offshore_share,0.073700377,0.073700377,86
+cop_annual_mean,curtailment_wind_offshore_mwh,0.073492898,0.073492898,86
+cop_winter_mean,curtailment_total_mwh,0.073327239,0.073327239,86
+wind_drought_max_hours,curtailment_wind_mwh,0.073230357,0.073230357,86
+cold_stress_hours_cop_lt2,curtailment_wind_share,-0.072551583,0.072551583,86
+elec_for_heat_annual_mwh,storage_power_hydrogen_storage_other_mw,0.072465156,0.072465156,86
+wind_drought_max_hours,storage_energy_hydrogen_storage_other_mwh,-0.072003627,0.072003627,86
+wind_drought_max_hours,curtailment_wind_share,0.071221352,0.071221352,86
+elec_for_heat_annual_mwh,storage_energy_hydrogen_storage_other_mwh,0.070259004,0.070259004,86
+wind_drought_max_hours,curtailment_total_mwh,0.069284653,0.069284653,86
+stress_score,storage_power_hydrogen_storage_other_mw,-0.067508189,0.067508189,86
+elec_for_heat_annual_mwh,curtailment_total_mwh,-0.063509755,0.063509755,86
+wind_drought_max_hours,curtailment_wind_offshore_mwh,0.063348396,0.063348396,86
+elec_for_heat_annual_mwh,curtailment_wind_offshore_share,-0.062092882,0.062092882,86
+heat_demand_annual_mwh,curtailment_wind_offshore_share,-0.062065297,0.062065297,86
+cold_stress_hours_cop_lt2,gen_Natural gas_mwh,0.061773529,0.061773529,86
+heat_demand_annual_mwh,curtailment_total_mwh,-0.061728252,0.061728252,86
+cf_vres_combined_winter,transmission_mean_utilisation,-0.060381455,0.060381455,86
+stress_energy_block,transmission_peak_utilisation,0.059060214,0.059060214,86
+wind_drought_max_hours,load_heat_mwh,0.05803355,0.05803355,86
+wind_drought_max_hours,total_annual_load_mwh,0.05803355,0.05803355,86
+cop_annual_mean,curtailment_total_mwh,0.057763026,0.057763026,86
+cop_annual_mean,gen_wind offshore_mwh,-0.057040118,0.057040118,86
+cop_winter_mean,curtailment_wind_offshore_share,0.056589083,0.056589083,86
+wind_drought_max_hours,storage_energy_hydrogen_storage_mwh,-0.056440867,0.056440867,86
+wind_drought_max_hours,storage_power_hydrogen_storage_mw,-0.056440867,0.056440867,86
+cold_stress_hours_cop_lt2,gen_PV ground_mwh,0.056430438,0.056430438,86
+cold_stress_hours_cop_lt2,curtailment_wind_mwh,-0.056234617,0.056234617,86
+cold_stress_hours_cop_lt2,curtailment_wind_offshore_share,-0.055182054,0.055182054,86
+stress_score,transmission_peak_utilisation,0.055165018,0.055165018,86
+wind_drought_max_hours,peak_load_mw,-0.054932846,0.054932846,86
+cf_vres_combined_annual,peak_load_mw,-0.052273225,0.052273225,86
+stress_persistence_block,peak_load_mw,0.050906165,0.050906165,86
+cop_annual_mean,transmission_peak_utilisation,-0.050739642,0.050739642,86
+stress_persistence_block,curtailment_wind_share,0.049932512,0.049932512,86
+dark_doldrums_hours,curtailment_wind_mwh,0.049348631,0.049348631,86
+dark_doldrums_hours,total_annual_load_mwh,0.047982779,0.047982779,86
+dark_doldrums_hours,load_heat_mwh,0.047982779,0.047982779,86
+cop_winter_mean,transmission_peak_utilisation,-0.046597657,0.046597657,86
+stress_persistence_block,elec_transmission_total_mw,-0.046373789,0.046373789,86
+stress_persistence_block,transmission_peak_utilisation,-0.046115515,0.046115515,86
+elec_for_heat_annual_mwh,transmission_peak_utilisation,0.045423036,0.045423036,86
+cop_annual_mean,gen_nuclear_mwh,0.044457976,0.044457976,86
+cf_vres_combined_winter,storage_power_flow_mw,0.044003902,0.044003902,86
+heat_demand_annual_mwh,transmission_peak_utilisation,0.04380715,0.04380715,86
+cf_vres_combined_annual,transmission_peak_utilisation,-0.043236733,0.043236733,86
+wind_drought_max_hours,transmission_mean_utilisation,0.042963128,0.042963128,86
+dark_doldrums_hours,elec_transmission_total_mw,-0.041576869,0.041576869,86
+stress_persistence_block,storage_energy_hydrogen_storage_other_mwh,-0.041111984,0.041111984,86
+stress_persistence_block,curtailment_wind_mwh,0.039262235,0.039262235,86
+dark_doldrums_hours,transmission_mean_utilisation,-0.036635073,0.036635073,86
+elec_for_heat_annual_mwh,gen_wind offshore_mwh,-0.036373101,0.036373101,86
+stress_persistence_block,storage_power_hydrogen_storage_other_mw,-0.036340086,0.036340086,86
+cold_stress_hours_cop_lt2,curtailment_wind_offshore_mwh,-0.035147733,0.035147733,86
+cf_vres_combined_winter,storage_energy_flow_mwh,0.034992258,0.034992258,86
+cop_winter_mean,storage_energy_hydrogen_storage_other_mwh,0.032545742,0.032545742,86
+cold_stress_hours_cop_lt2,curtailment_total_mwh,-0.032388364,0.032388364,86
+cf_vres_combined_annual,cap_gen_Natural gas_mw,0.032375891,0.032375891,86
+wind_drought_max_hours,curtailment_PV_ground_share,0.031978595,0.031978595,86
+cf_vres_combined_annual,storage_energy_hydrogen_storage_other_mwh,0.031482,0.031482,86
+heat_demand_peak_mw,curtailment_share_pu,-0.030098904,0.030098904,86
+stress_peak_block,curtailment_share_pu,-0.029647171,0.029647171,86
+wind_drought_max_hours,curtailment_PV_ground_mwh,0.029499684,0.029499684,86
+elec_for_heat_peak_mw,curtailment_share_pu,-0.029196684,0.029196684,86
+heat_demand_annual_mwh,gen_wind offshore_mwh,-0.028086364,0.028086364,86
+cf_vres_combined_annual,storage_power_hydrogen_storage_other_mw,0.027542675,0.027542675,86
+elec_for_heat_peak_mw,curtailment_wind_offshore_mwh,-0.027438685,0.027438685,86
+stress_energy_block,storage_power_hydrogen_storage_other_mw,0.027287827,0.027287827,86
+stress_peak_block,curtailment_wind_offshore_mwh,-0.027190288,0.027190288,86
+heat_demand_peak_mw,curtailment_wind_offshore_mwh,-0.026929137,0.026929137,86
+stress_persistence_block,curtailment_wind_offshore_share,-0.026780723,0.026780723,86
+cop_winter_mean,storage_power_hydrogen_storage_other_mw,0.023272388,0.023272388,86
+stress_energy_block,storage_energy_hydrogen_storage_other_mwh,0.023143798,0.023143798,86
+cop_winter_mean,storage_power_hydrogen_storage_mw,-0.022362751,0.022362751,86
+cop_winter_mean,storage_energy_hydrogen_storage_mwh,-0.022362751,0.022362751,86
+cold_stress_hours_cop_lt2,gen_nuclear_mwh,0.021447278,0.021447278,86
+heat_demand_annual_mwh,gen_wind_mwh,0.020136839,0.020136839,86
+dark_doldrums_hours,peak_load_mw,-0.019249038,0.019249038,86
+cold_stress_hours_cop_lt2,transmission_peak_utilisation,0.018943491,0.018943491,86
+elec_for_heat_peak_mw,curtailment_total_mwh,0.017524468,0.017524468,86
+stress_peak_block,curtailment_total_mwh,0.017332496,0.017332496,86
+heat_demand_peak_mw,curtailment_total_mwh,0.017131687,0.017131687,86
+elec_for_heat_peak_mw,curtailment_wind_offshore_share,0.01625812,0.01625812,86
+stress_peak_block,curtailment_wind_offshore_share,0.015439593,0.015439593,86
+heat_demand_peak_mw,curtailment_wind_offshore_share,0.014599592,0.014599592,86
+dark_doldrums_hours,transmission_peak_utilisation,-0.013554385,0.013554385,86
+elec_for_heat_peak_mw,storage_energy_hydrogen_storage_mwh,-0.012870595,0.012870595,86
+elec_for_heat_peak_mw,storage_power_hydrogen_storage_mw,-0.012870595,0.012870595,86
+stress_peak_block,storage_energy_hydrogen_storage_mwh,-0.012711519,0.012711519,86
+stress_peak_block,storage_power_hydrogen_storage_mw,-0.012711519,0.012711519,86
+cop_annual_mean,curtailment_wind_share,0.012569282,0.012569282,86
+heat_demand_peak_mw,storage_energy_hydrogen_storage_mwh,-0.012545579,0.012545579,86
+heat_demand_peak_mw,storage_power_hydrogen_storage_mw,-0.012545579,0.012545579,86
+elec_for_heat_annual_mwh,gen_wind_mwh,0.006392618,0.006392618,86
+cop_annual_mean,curtailment_wind_mwh,-0.001620932,0.001620932,86
+elec_for_heat_annual_mwh,chp_h2_total_mw,4.48E-15,4.48E-15,86
+elec_for_heat_annual_mwh,load_hydrogen_mwh,4.48E-15,4.48E-15,86
+elec_for_heat_annual_mwh,storage_power_transport_mw,-4.48E-15,4.48E-15,86
+elec_for_heat_annual_mwh,storage_energy_transport_mwh,-4.48E-15,4.48E-15,86
+elec_for_heat_annual_mwh,load_transport_mwh,4.48E-15,4.48E-15,86
+heat_demand_annual_mwh,storage_power_transport_mw,2.36E-15,2.36E-15,86
+heat_demand_annual_mwh,storage_energy_transport_mwh,2.36E-15,2.36E-15,86
+cf_vres_combined_annual,load_hydrogen_mwh,-2.32E-15,2.32E-15,86
+cf_vres_combined_annual,load_transport_mwh,-2.32E-15,2.32E-15,86
+cf_vres_combined_annual,storage_energy_transport_mwh,2.32E-15,2.32E-15,86
+cf_vres_combined_annual,storage_power_transport_mw,2.32E-15,2.32E-15,86
+cf_vres_combined_annual,chp_h2_total_mw,-2.32E-15,2.32E-15,86
+cop_winter_mean,load_transport_mwh,-2.24E-15,2.24E-15,86
+cop_winter_mean,chp_h2_total_mw,-2.24E-15,2.24E-15,86
+cop_winter_mean,load_hydrogen_mwh,-2.24E-15,2.24E-15,86
+heat_demand_annual_mwh,load_transport_mwh,-2.20E-15,2.20E-15,86
+heat_demand_annual_mwh,load_hydrogen_mwh,-2.20E-15,2.20E-15,86
+heat_demand_annual_mwh,chp_h2_total_mw,-2.20E-15,2.20E-15,86
+cop_winter_mean,storage_power_transport_mw,2.14E-15,2.14E-15,86
+cop_winter_mean,storage_energy_transport_mwh,2.14E-15,2.14E-15,86
+elec_for_heat_peak_mw,storage_power_transport_mw,8.77E-16,8.77E-16,86
+elec_for_heat_peak_mw,storage_energy_transport_mwh,8.77E-16,8.77E-16,86
+cf_vres_combined_winter,storage_power_transport_mw,-8.35E-16,8.35E-16,86
+cf_vres_combined_winter,storage_energy_transport_mwh,-8.35E-16,8.35E-16,86
+cf_vres_combined_winter,load_hydrogen_mwh,8.18E-16,8.18E-16,86
+cf_vres_combined_winter,load_transport_mwh,8.18E-16,8.18E-16,86
+cf_vres_combined_winter,chp_h2_total_mw,8.18E-16,8.18E-16,86
+elec_for_heat_peak_mw,chp_h2_total_mw,-7.83E-16,7.83E-16,86
+elec_for_heat_peak_mw,load_transport_mwh,-7.83E-16,7.83E-16,86
+elec_for_heat_peak_mw,load_hydrogen_mwh,-7.83E-16,7.83E-16,86
+stress_persistence_block,chp_h2_total_mw,6.25E-16,6.25E-16,86
+stress_persistence_block,load_hydrogen_mwh,6.25E-16,6.25E-16,86
+stress_persistence_block,load_transport_mwh,6.25E-16,6.25E-16,86
+stress_score,load_transport_mwh,5.80E-16,5.80E-16,86
+stress_score,chp_h2_total_mw,5.80E-16,5.80E-16,86
+stress_score,load_hydrogen_mwh,5.80E-16,5.80E-16,86
+cop_annual_mean,load_transport_mwh,-5.75E-16,5.75E-16,86
+cop_annual_mean,chp_h2_total_mw,-5.75E-16,5.75E-16,86
+cop_annual_mean,storage_power_transport_mw,5.75E-16,5.75E-16,86
+cop_annual_mean,storage_energy_transport_mwh,5.75E-16,5.75E-16,86
+cop_annual_mean,load_hydrogen_mwh,-5.75E-16,5.75E-16,86
+stress_score,storage_energy_transport_mwh,-5.47E-16,5.47E-16,86
+stress_score,storage_power_transport_mw,-5.47E-16,5.47E-16,86
+stress_energy_block,storage_power_transport_mw,-5.43E-16,5.43E-16,86
+stress_energy_block,storage_energy_transport_mwh,-5.43E-16,5.43E-16,86
+stress_persistence_block,storage_power_transport_mw,-5.23E-16,5.23E-16,86
+stress_persistence_block,storage_energy_transport_mwh,-5.23E-16,5.23E-16,86
+cold_stress_hours_cop_lt2,storage_energy_transport_mwh,-5.20E-16,5.20E-16,86
+cold_stress_hours_cop_lt2,storage_power_transport_mw,-5.20E-16,5.20E-16,86
+stress_energy_block,load_hydrogen_mwh,4.99E-16,4.99E-16,86
+stress_energy_block,load_transport_mwh,4.99E-16,4.99E-16,86
+stress_energy_block,chp_h2_total_mw,4.99E-16,4.99E-16,86
+stress_peak_block,storage_energy_transport_mwh,3.71E-16,3.71E-16,86
+stress_peak_block,storage_power_transport_mw,3.71E-16,3.71E-16,86
+stress_peak_block,load_transport_mwh,-3.49E-16,3.49E-16,86
+stress_peak_block,load_hydrogen_mwh,-3.49E-16,3.49E-16,86
+stress_peak_block,chp_h2_total_mw,-3.49E-16,3.49E-16,86
+heat_demand_peak_mw,chp_h2_total_mw,1.84E-16,1.84E-16,86
+heat_demand_peak_mw,load_transport_mwh,1.84E-16,1.84E-16,86
+heat_demand_peak_mw,load_hydrogen_mwh,1.84E-16,1.84E-16,86
+cold_stress_hours_cop_lt2,chp_h2_total_mw,-1.56E-16,1.56E-16,86
+cold_stress_hours_cop_lt2,load_transport_mwh,-1.56E-16,1.56E-16,86
+cold_stress_hours_cop_lt2,load_hydrogen_mwh,-1.56E-16,1.56E-16,86
+dark_doldrums_hours,chp_h2_total_mw,-1.05E-16,1.05E-16,86
+dark_doldrums_hours,storage_energy_transport_mwh,1.05E-16,1.05E-16,86
+dark_doldrums_hours,storage_power_transport_mw,1.05E-16,1.05E-16,86
+dark_doldrums_hours,load_hydrogen_mwh,-1.05E-16,1.05E-16,86
+dark_doldrums_hours,load_transport_mwh,-1.05E-16,1.05E-16,86
+heat_demand_peak_mw,storage_power_transport_mw,-8.91E-17,8.91E-17,86
+heat_demand_peak_mw,storage_energy_transport_mwh,-8.91E-17,8.91E-17,86
+wind_drought_max_hours,storage_power_transport_mw,6.37E-17,6.37E-17,86
+wind_drought_max_hours,storage_energy_transport_mwh,6.37E-17,6.37E-17,86
+wind_drought_max_hours,load_transport_mwh,2.39E-17,2.39E-17,86
+wind_drought_max_hours,load_hydrogen_mwh,2.39E-17,2.39E-17,86
+wind_drought_max_hours,chp_h2_total_mw,2.39E-17,2.39E-17,86

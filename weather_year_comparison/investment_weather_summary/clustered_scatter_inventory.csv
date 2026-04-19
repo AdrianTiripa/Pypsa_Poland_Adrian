@@ -1,0 +1,9 @@
+color_metric,n_clusters,label
+objective,70,objective [bn €]
+storage_energy_hydrogen_storage_mwh,70,Storage energy: hydroGeneration: storageh [TWh]
+cap_gen_PV ground_mw,70,Capacity: PV ground [GW]
+cap_gen_wind_mw,70,Capacity: wind [GW]
+cap_gen_wind offshore_mw,70,Capacity: wind offshore [GW]
+heat_pump_total_mw,70,heatmp total [GW]
+electrolyser_total_mw,70,electrolyser total [GW]
+h2_pipeline_total_mw,70,h2 pipeline total [GW]

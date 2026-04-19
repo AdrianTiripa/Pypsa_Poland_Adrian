@@ -30,6 +30,9 @@
 #       --runs_summary <all_runs_summary.csv> \
 #       --inputs_csv   <weather_year_inputs_summary.csv> \
 #       --out_dir      <output_folder>
+# & C:/Users/adria/anaconda3/envs/pypsa-env/python.exe c:/Users/adria/MODEL_PyPSA/Core/pypsa-poland_ADRIAN/src/pypsa_poland/investment_weather_summary.py 
+# --runs_summary C:\Users\adria\MODEL_PyPSA\Core\weather_year_comparison\all_runs_summary.csv --inputs_csv C:\Users\adria\MODEL_PyPSA\Core\weather_year_inputs\weather_year_inputs_summary.csv 
+# --out_dir C:\Users\adria\MODEL_PyPSA\Core\weather_year_comparison\investment_weather_summary  
 
 from __future__ import annotations
 
