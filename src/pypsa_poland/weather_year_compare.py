@@ -87,16 +87,62 @@ def try_read_ts(run_dir: Path, stems: list[str]) -> tuple[str | None, pd.DataFra
 
 
 def read_snapshot_weights(run_dir: Path, index: pd.DatetimeIndex) -> pd.Series:
+    """
+    Return the per-snapshot weighting used to turn hourly-like variables into
+    annual energy.
+
+    Lookup order (aligned with results_to_csv.py so the two scripts agree):
+      1. snapshot_weightings.csv in run_dir (PyPSA's standard export).
+      2. run_metadata.json in run_dir, which orchestration.py writes with
+         the model step size. This is the fallback that matters for the
+         weather-year workflow: some runs were archived without
+         snapshot_weightings.csv, and without this fallback the weight
+         would silently default to 1.0 and annual totals would be off by
+         a factor equal to the step size (e.g. 3× too small at 3 h steps).
+      3. Auto-detect from the index itself: if the median spacing between
+         consecutive snapshots is close to an integer number of hours, use
+         that. This is a last-resort guard so we never quietly ship a
+         misweighted aggregate.
+      4. Fall back to 1.0 only if none of the above resolves.
+    """
+    # 1. snapshot_weightings.csv (standard PyPSA export) -------------------
     path = run_dir / "snapshot_weightings.csv"
-    if not path.exists():
-        return pd.Series(1.0, index=index)
-    w = pd.read_csv(path, index_col=0)
-    w.index = pd.to_datetime(w.index, errors="coerce")
-    if w.index.isna().any():
-        w = w.loc[~w.index.isna()].copy()
-    for col in ["generators", "objective", "stores"]:
-        if col in w.columns:
-            return pd.to_numeric(w[col], errors="coerce").fillna(1.0).reindex(index).fillna(1.0)
+    if path.exists():
+        w = pd.read_csv(path, index_col=0)
+        w.index = pd.to_datetime(w.index, errors="coerce")
+        if w.index.isna().any():
+            w = w.loc[~w.index.isna()].copy()
+        for col in ["generators", "objective", "stores"]:
+            if col in w.columns:
+                s = pd.to_numeric(w[col], errors="coerce").fillna(1.0)
+                return s.reindex(index).fillna(1.0)
+
+    # 2. run_metadata.json (written by orchestration.py) -------------------
+    meta_path = run_dir / "run_metadata.json"
+    if meta_path.exists():
+        try:
+            meta = json.loads(meta_path.read_text(encoding="utf-8"))
+            step = float(meta.get("stepsize", 1.0))
+            if step > 0:
+                return pd.Series(step, index=index)
+        except Exception:
+            pass
+
+    # 3. Auto-detect from the DatetimeIndex --------------------------------
+    if len(index) >= 2:
+        try:
+            diffs = pd.Series(index).diff().dropna().dt.total_seconds() / 3600.0
+            if len(diffs) > 0:
+                step = float(diffs.median())
+                # Round to integer hours if close, else use the median as-is.
+                if step > 0 and abs(step - round(step)) < 0.05:
+                    step = float(round(step))
+                if step > 0:
+                    return pd.Series(step, index=index)
+        except Exception:
+            pass
+
+    # 4. Last-resort fallback ---------------------------------------------
     return pd.Series(1.0, index=index)
 
 
@@ -151,6 +197,62 @@ def electric_interregional_mask(links: pd.DataFrame) -> pd.Series:
 
     return pd.Series(rr, index=links.index) & ~pd.Series(excl, index=links.index)
 
+
+
+
+# ---------------------------------------------------------------------------
+# Helper: trusted generation-by-carrier summary from csv_results
+# ---------------------------------------------------------------------------
+
+def _read_generation_by_carrier_system_csv(run_dir: Path) -> dict[str, float] | None:
+    """
+    Prefer the post-processed generation-by-carrier system CSV if available.
+    Expected columns: carrier, energy_mwh
+    """
+    candidate_patterns = [
+        "04_generation_by_carrier_system_mwh.csv",
+        "csv_results/04_generation_by_carrier_system_mwh.csv",
+        "results/04_generation_by_carrier_system_mwh.csv",
+        "results_to_csv/04_generation_by_carrier_system_mwh.csv",
+        "**/04_generation_by_carrier_system_mwh.csv",
+    ]
+
+    candidates: list[Path] = []
+    for pat in candidate_patterns:
+        if "**" in pat:
+            candidates.extend(run_dir.glob(pat))
+        else:
+            p = run_dir / pat
+            if p.exists():
+                candidates.append(p)
+
+    if not candidates:
+        return None
+
+    candidates = sorted(set(candidates), key=lambda p: (len(str(p)), str(p)))
+    path = candidates[0]
+
+    try:
+        df = pd.read_csv(path)
+        cols = {c.lower(): c for c in df.columns}
+        carrier_col = cols.get("carrier")
+        energy_col = cols.get("energy_mwh")
+
+        if carrier_col is None or energy_col is None:
+            return None
+
+        tmp = df[[carrier_col, energy_col]].copy()
+        tmp[energy_col] = pd.to_numeric(tmp[energy_col], errors="coerce")
+        tmp = tmp.dropna(subset=[energy_col])
+
+        out = (
+            tmp.groupby(carrier_col, dropna=False)[energy_col]
+            .sum()
+            .to_dict()
+        )
+        return {str(k): float(v) for k, v in out.items()}
+    except Exception:
+        return None
 
 # ---------------------------------------------------------------------------
 # Run metadata helpers
@@ -264,9 +366,8 @@ def extract_run(run_dir: Path) -> dict:
         row["peak_load_mw"] = row["total_annual_load_mwh"] = np.nan
         for cls in SECTOR_CLASSES:
             row[f"load_{cls}_mwh"] = np.nan
-
     # Generation and curtailment
-    _, gen_p    = try_read_ts(run_dir, ["generators-p", "generators-p_set"])
+    _, gen_p    = try_read_ts(run_dir, ["generators-p"])
     _, gen_pmax = try_read_ts(run_dir, ["generators-p_max_pu"])
 
     if gens is not None:
@@ -277,7 +378,17 @@ def extract_run(run_dir: Path) -> dict:
             for carrier, mw in gens.groupby("carrier")[cap_col].sum().items():
                 row[f"cap_gen_{carrier}_mw"] = float(mw)
 
-        if gen_p is not None and "carrier" in gens.columns:
+        # Prefer trusted csv_results generation-by-carrier summary if available
+        gen_summary = _read_generation_by_carrier_system_csv(run_dir)
+        if gen_summary is not None:
+            total_gen = 0.0
+            for carrier, mwh in gen_summary.items():
+                row[f"gen_{carrier}_mwh"] = float(mwh)
+                total_gen += float(mwh)
+            row["total_generation_mwh"] = float(total_gen)
+
+        # Fallback only to realised dispatch, never to generators-p_set
+        elif gen_p is not None and "carrier" in gens.columns:
             w = read_snapshot_weights(run_dir, gen_p.index)
             common = [c for c in gen_p.columns if c in gens.index]
             if common:
@@ -307,7 +418,6 @@ def extract_run(run_dir: Path) -> dict:
                     tag = car.replace(" ", "_")
                     row[f"curtailment_{tag}_mwh"]   = cm
                     row[f"curtailment_{tag}_share"] = (cm / am) if am > 0 else 0.0
-
     # ---- storage ------------------------------------------------------------
     if storage is not None:
         cap_col_s = choose_cap(storage)
@@ -471,12 +581,18 @@ def make_all_plots(
     # 5. Installed generation capacity
     cap_wide = _wide_by_year(records, "cap_gen_", "_mw")
     if not cap_wide.empty:
+        # Order stacks from low to high coefficient of variation: rock-solid
+        # carriers (onshore wind, nuclear, gas — pinned by the scenario
+        # constraints) form a flat foundation at the bottom, while the
+        # variable carriers (PV ground above its floor) float on top, where
+        # year-to-year wiggle is visually obvious.
         stacked_bar(
             cap_wide / 1e3,
             out_dir / "installed_gen_capacity_stacked.png",
             "Installed generation capacity by carrier across weather years",
             "Capacity", "GW",
             top_n=top_carriers, subtitle=NZP,
+            stack_order_by_variability=True,
         )
 
     # 6. VRES curtailment
@@ -498,6 +614,10 @@ def make_all_plots(
         for c in summary.columns if c.startswith("curtailment_") and c.endswith("_share")
     }
     if curt_share_cols:
+        # Use markers_only so the figure is a multi-series SCATTER (no line
+        # between adjacent weather years). Connecting the dots would imply
+        # a temporal trend between, say, 1953 and 1954 that doesn't exist
+        # in this independent-year-optimisation setup.
         line(
             summary[list(curt_share_cols)].dropna() * 100,
             out_dir / "curtailment_share_by_carrier.png",
@@ -506,6 +626,7 @@ def make_all_plots(
             subtitle=NZP,
             cols=list(curt_share_cols),
             color_map={c: CARRIER_COLORS.get(v, BLUE) for c, v in curt_share_cols.items()},
+            markers_only=True,
         )
 
     # 7. Storage power + energy
@@ -575,6 +696,12 @@ def make_all_plots(
              "Electricity for heat (TWh)","Heat pump capacity (GW)"),
             ("elec_for_heat_annual_mwh",  "objective",
              "Electricity for heat (TWh)","System cost (bn €)"),
+            # Energy-stress block vs cost: this is the headline correlation in
+            # the weather-robustness report (r ≈ 0.74), stronger than either
+            # VRES CF or electricity-for-heat alone. Plot it as a dedicated
+            # scatter so the report can cite the figure directly.
+            ("stress_energy_block",       "objective",
+             "Energy stress block",       "System cost (bn €)"),
             ("wind_drought_max_hours",    "storage_energy_hydrogen_storage_mwh",
              "Wind drought (hours)",      "H₂ storage energy (TWh)"),
             ("wind_drought_max_hours",    "electrolyser_total_mw",
@@ -585,8 +712,11 @@ def make_all_plots(
              "Cold-stress hours (COP<2)", "Heat pump capacity (GW)"),
         ]
 
+        n_scatters_written = 0
+        n_scatters_skipped = 0
         for inp_col, out_col, xlabel, ylabel in pairs:
             if inp_col not in inp.columns or out_col not in summary.columns:
+                n_scatters_skipped += 1
                 continue
 
             x = inp[inp_col].copy()
@@ -610,7 +740,22 @@ def make_all_plots(
                 title=f"{ylabel} vs {xlabel}",
                 subtitle=NZP,
                 trend=True,
+                # Cluster nearby years into a single marker with grouped labels,
+                # and only label multi-year clusters plus axis extrema plus the
+                # N most off-trend singletons. The Pearson r and trend line are
+                # still computed on the raw 86-point data so the statistics are
+                # unchanged. Tune n_extra_singleton_labels per plot if one of
+                # these scatters needs more or fewer year labels.
+                cluster=True,
+                n_extra_singleton_labels=12,
             )
+            n_scatters_written += 1
+
+        # Explicit confirmation so the user doesn't have to guess whether the
+        # subfolder got populated.
+        print(f"Wrote {n_scatters_written} correlation scatter plots "
+              f"to {stress_dir} "
+              f"({n_scatters_skipped} skipped due to missing columns)")
 
         # Ranked table joining input stress + output metrics
         common_years = summary.index.intersection(inp.index)

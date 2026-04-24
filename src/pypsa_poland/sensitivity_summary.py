@@ -30,9 +30,7 @@
 #       --runs_summary <all_runs_summary.csv> \
 #       --inputs_csv   <weather_year_inputs_summary.csv> \
 #       --out_dir      <output_folder>
-# & C:/Users/adria/anaconda3/envs/pypsa-env/python.exe c:/Users/adria/MODEL_PyPSA/Core/pypsa-poland_ADRIAN/src/pypsa_poland/investment_weather_summary.py 
-# --runs_summary C:\Users\adria\MODEL_PyPSA\Core\weather_year_comparison\all_runs_summary.csv --inputs_csv C:\Users\adria\MODEL_PyPSA\Core\weather_year_inputs\weather_year_inputs_summary.csv 
-# --out_dir C:\Users\adria\MODEL_PyPSA\Core\weather_year_comparison\investment_weather_summary  
+#& C:/Users/adria/anaconda3/envs/pypsa-env/python.exe c:/Users/adria/MODEL_PyPSA/Core/pypsa-poland_ADRIAN/src/pypsa_poland/investment_weather_summary.py  --runs_summary C:\Users\adria\MODEL_PyPSA\Core\weather_year_comparison\all_runs_summary.csv --inputs_csv C:\Users\adria\MODEL_PyPSA\Core\weather_year_inputs\weather_year_inputs_summary.csv --out_dir C:\Users\adria\MODEL_PyPSA\Core\weather_year_comparison\investment_weather_summary  
 
 from __future__ import annotations
 
@@ -74,7 +72,10 @@ OUTPUT_PRIORITY_PATTERNS = [
     "gen_",
     "curtailment_",
     "storage_power_",
-    "storage_energy_",
+    # storage_energy_ intentionally excluded from headline ranking
+    # because in this model several storage energy metrics are mechanically
+    # linked to storage power through fixed max_hours, so including both
+    # double counts the same sensitivity story.
     "electrolyser_total_mw",
     "heat_pump_total_mw",
     "h2_pipeline_total_mw",
@@ -104,6 +105,8 @@ EXCLUDE_OUTPUTS = {
 def is_priority_output(col: str) -> bool:
     """Return True if col matches a recognised output metric pattern."""
     if col in EXCLUDE_OUTPUTS:
+        return False
+    if col.startswith("storage_energy_"):
         return False
     return any(p in col for p in OUTPUT_PRIORITY_PATTERNS)
 
@@ -198,7 +201,7 @@ def plot_top_sensitive(summary_df: pd.DataFrame, runs_df: pd.DataFrame, out_dir:
             s, _ = scaled_series(runs_df.set_index("year")[c], c)
             plt.plot(s.index, s.values, marker="o", linewidth=1.2, label=pretty_name(c))
         plt.title("Trajectories of selected weather-sensitive outputs")
-        plt.xlabel("Weather year")
+        plt.xlabel("Weather Years")
         plt.ylabel("Scaled value")
         plt.legend(fontsize=7, ncol=2)
         plt.tight_layout()

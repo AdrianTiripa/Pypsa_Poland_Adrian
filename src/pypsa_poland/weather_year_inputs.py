@@ -24,10 +24,18 @@
 #   - Composite stress score (energy + peak + persistence sub-scores).
 #
 # Usage:
-#   python weather_year_inputs.py \
-#       --profiles_root <path> --cf_folder <path> \
+#   python weather_year_inputs.py
+#       --profiles_root <path> --cf_folder <path>
 #       --system_year 2050 --scenario Core
 #   python weather_year_inputs.py ... --years 1980 1990 2000 2010 2020
+#
+#   To regenerate only the clustered stress scatter:
+#   python weather_year_inputs.py
+#       --profiles_root <path> --cf_folder <path>
+#       --system_year 2050 --scenario Core
+#       --out_dir <path> --only_scatter
+
+# & C:/Users/adria/anaconda3/envs/pypsa-env/python.exe c:/Users/adria/MODEL_PyPSA/Core/pypsa-poland_ADRIAN/src/pypsa_poland/weather_year_inputs.py --profiles_root "C:\Users\adria\MODEL_PyPSA\Core\Profiles_new" --cf_folder "C:\Users\adria\MODEL_PyPSA\Core\Profiles_new\Core" --scenario Core --system_year 2050 --out_dir "C:\Users\adria\MODEL_PyPSA\Core\runs\weather_year_comparison"
 
 from __future__ import annotations
 
@@ -332,6 +340,26 @@ def _add_stress_metrics(df: pd.DataFrame) -> pd.DataFrame:
 # Plot generation
 # ---------------------------------------------------------------------------
 
+def _make_stress_scatter_only(df: pd.DataFrame, out_dir: Path) -> None:
+    d = df.set_index("year").sort_index()
+
+    scatter_annotated(
+        d["cf_vres_combined_annual"],
+        d["elec_for_heat_annual_mwh"] / 1e6,
+        out_dir / "stress_scatter_vres_vs_efh.png",
+        xlabel="Combined VRES capacity factor",
+        ylabel="Electricity for heat",
+        title="Weather-year stress: VRES availability vs heating electricity demand",
+        subtitle="Upper-left = most stressful for the system (low wind/solar + high electricity needed for heat)",
+        xunit="p.u.",
+        yunit="TWh",
+        trend=True,
+        cluster_x_tol=0.0012,
+        cluster_y_tol=0.60,
+        highlight=[2020, 1987],
+    )
+
+
 def make_plots(df: pd.DataFrame, out_dir: Path) -> None:
     """
     Generate all input-characterisation figures and save them to out_dir.
@@ -354,6 +382,10 @@ def make_plots(df: pd.DataFrame, out_dir: Path) -> None:
         "Annual mean capacity factor by technology",
         "Capacity factor", "p.u.",
         subtitle=NZP,
+        # Weather years are independent inputs to the model, not a time series:
+        # drawing a line between 1953 and 1954 would imply a temporal trend
+        # that doesn't exist. Show markers only.
+        markers_only=True,
     )
 
     bar(d["wind_drought_max_hours"],
@@ -377,7 +409,7 @@ def make_plots(df: pd.DataFrame, out_dir: Path) -> None:
          "Annual heat demand by weather year",
          "Heat demand", "TWh",
          subtitle="Sum across all 16 Polish regions — " + NZP,
-         markers=True,
+         markers_only=True,
          color_map={"heat_demand_annual_mwh": CARRIER_COLORS["heat"]})
 
     line(d[["heat_demand_peak_mw"]] / 1e3,
@@ -385,7 +417,7 @@ def make_plots(df: pd.DataFrame, out_dir: Path) -> None:
          "Peak hourly heat demand by weather year",
          "Peak demand", "GW",
          subtitle="System-wide hourly peak across all regions",
-         markers=True,
+         markers_only=True,
          color_map={"heat_demand_peak_mw": CARRIER_COLORS["heat"]})
 
     line(
@@ -398,6 +430,7 @@ def make_plots(df: pd.DataFrame, out_dir: Path) -> None:
         "Heat pump COP by weather year",
         "COP", "",
         subtitle="System average across all regions",
+        markers_only=True,
         color_map={
             "Annual mean": BLUE,
             "Winter (Jan–Feb)": CARRIER_COLORS["wind offshore"],
@@ -418,7 +451,7 @@ def make_plots(df: pd.DataFrame, out_dir: Path) -> None:
          "Annual electricity needed for heat",
          "Electricity for heat", "TWh",
          subtitle="Heat demand divided by COP — core energy-stress indicator",
-         markers=True,
+         markers_only=True,
          color_map={"elec_for_heat_annual_mwh": CARRIER_COLORS["heat_pump"]})
 
     line(d[["elec_for_heat_peak_mw"]] / 1e3,
@@ -426,20 +459,10 @@ def make_plots(df: pd.DataFrame, out_dir: Path) -> None:
          "Peak electricity needed for heat by weather year",
          "Peak demand", "GW",
          subtitle="System-wide hourly peak of heating electricity need",
-         markers=True,
+         markers_only=True,
          color_map={"elec_for_heat_peak_mw": CARRIER_COLORS["heat_pump"]})
 
-    scatter_annotated(
-        d["cf_vres_combined_annual"],
-        d["elec_for_heat_annual_mwh"] / 1e6,
-        out_dir / "stress_scatter_vres_vs_efh.png",
-        xlabel="Combined VRES capacity factor",
-        ylabel="Electricity for heat",
-        title="Weather-year stress: VRES availability vs heating electricity demand",
-        subtitle="Upper-left = most stressful for the system (low wind/solar + high electricity needed for heat)",
-        xunit="p.u.", yunit="TWh",
-        trend=True,
-    )
+    _make_stress_scatter_only(df, out_dir)
 
     seas_cols = {f"cf_onshore_{s}": s for s in SEASONS}
     seas_data = {v: d[k] for k, v in seas_cols.items() if k in d.columns}
@@ -543,6 +566,11 @@ def main() -> None:
     ap.add_argument("--system_year", type=int, default=2050)
     ap.add_argument("--years", nargs="+", type=int, default=None)
     ap.add_argument("--out_dir", default=None)
+    ap.add_argument(
+        "--only_scatter",
+        action="store_true",
+        help="If set, only regenerate the clustered VRES-vs-electricity-for-heat stress scatter plot.",
+    )
     args = ap.parse_args()
 
     profiles_root = Path(args.profiles_root)
@@ -585,6 +613,7 @@ def main() -> None:
 
     df = pd.DataFrame(rows).sort_values("year").reset_index(drop=True)
     df = _add_stress_metrics(df)
+
     df.to_csv(out_dir / "weather_year_inputs_summary.csv", index=False)
 
     ranked = df.sort_values("stress_score", ascending=False)[[
@@ -596,6 +625,11 @@ def main() -> None:
 
     if failures:
         pd.DataFrame(failures).to_csv(out_dir / "failures.csv", index=False)
+
+    if args.only_scatter:
+        _make_stress_scatter_only(df, out_dir)
+        print(f"\nOnly stress scatter saved to: {out_dir}")
+        return
 
     print("\nTop 10 most stressful years:")
     print(ranked.head(10).to_string(index=False))

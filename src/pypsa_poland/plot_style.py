@@ -170,6 +170,30 @@ def _format_value_label(v: float, unit: str) -> str:
 # Figure / axis helpers
 # ---------------------------------------------------------------------------
  
+def _looks_like_year_index(idx) -> tuple[bool, list[int] | None]:
+    """
+    Detect whether an index is a list of plausible calendar years (e.g. 1940..2025).
+
+    Returns (True, list_of_int_years) if yes, (False, None) otherwise.
+    Used by bar() and stacked_bar() to switch from "label every bar" to
+    "label every Nth year" automatically.
+    """
+    try:
+        years = []
+        for v in idx:
+            iv = int(v)
+            if iv != float(v):  # rejects non-integers like 2020.5
+                return False, None
+            if iv < 1900 or iv > 2100:
+                return False, None
+            years.append(iv)
+        if len(years) < 2:
+            return False, None
+        return True, years
+    except (TypeError, ValueError):
+        return False, None
+
+
 def _apply_ax_style(ax: plt.Axes, ylabel: str, unit: str, title: str,
                     subtitle: str | None = None) -> None:
     """Apply consistent axis styling."""
@@ -208,20 +232,29 @@ def bar(
     unit: str = "",
     color: str = BLUE,
     subtitle: str | None = None,
-    value_labels: bool = True,
+    value_labels: bool = False,
     figsize: tuple[float, float] = (11, 4.5),
     rotate_xticks: bool = True,
     ref_line: float | None = None,
     ref_label: str | None = None,
+    year_tick_step: int = 5,
 ) -> None:
     """
-    Single-series bar chart with optional value labels above bars.
- 
+    Single-series bar chart.
+
     Parameters
     ----------
-    series      : pd.Series — index becomes x-axis labels
-    ref_line    : draw a horizontal dashed reference line at this y-value
-    ref_label   : legend label for the reference line
+    series          : pd.Series — index becomes x-axis labels
+    value_labels    : default False. Flip to True only for short summary series
+                      (solve status, short rankings) where the per-bar number
+                      is the headline. Long weather-year series are easier to
+                      read without per-bar text.
+    year_tick_step  : when the index looks like a list of integer years AND
+                      the series is long (>30 bars), only show every Nth year
+                      label (default 5: 1940, 1945, 1950, ...). All bars are
+                      still drawn — only the labels are sparser.
+    ref_line        : draw a horizontal dashed reference line at this y-value
+    ref_label       : legend label for the reference line
     """
     series = series.dropna()
     if series.empty:
@@ -234,13 +267,28 @@ def bar(
                   edgecolor="white", linewidth=0.5, zorder=3, width=0.65)
  
     if value_labels:
+        # When there are many bars and labels were explicitly requested,
+        # rotate them 90° so they don't overlap horizontally.
+        label_rot = 90 if (rotate_xticks and len(series) > 30) else 0
+
+        # Extra headroom so rotated labels don't clip against the top axis.
+        if label_rot == 90 and len(series) >= 2:
+            finite = series.values[np.isfinite(series.values)]
+            if finite.size:
+                ymax = float(finite.max())
+                ymin = float(finite.min())
+                yspan = max(ymax - ymin, abs(ymax), 1.0)
+                ax.set_ylim(min(0.0, ymin), ymax + 0.22 * yspan)
+
         for b, v in zip(bars, series.values):
             if np.isfinite(v):
                 ax.text(
                     b.get_x() + b.get_width() / 2,
                     b.get_height() + np.ptp(series.values) * 0.01,
                     _format_value_label(v, unit),
-                    ha="center", va="bottom", fontsize=7.5, color=LABEL_COLOR,
+                    ha="center", va="bottom",
+                    rotation=label_rot,
+                    fontsize=7.5, color=LABEL_COLOR,
                 )
  
     if ref_line is not None:
@@ -248,15 +296,35 @@ def bar(
                    label=ref_label or f"Reference: {ref_line}", zorder=4)
         ax.legend(fontsize=8)
  
-    ax.set_xticks(x)
-    if rotate_xticks and len(series) > 30:
-        rot = 90
-    elif rotate_xticks and len(series) > 6:
-        rot = 45
+    # ---- Decide the x-tick label policy --------------------------------
+    # If the index looks like a list of years AND there are many bars, show
+    # only multiples of `year_tick_step` so the axis isn't a wall of text.
+    is_year_index, year_values = _looks_like_year_index(series.index)
+
+    if is_year_index and rotate_xticks and len(series) > 30:
+        tick_positions = [i for i, y in enumerate(year_values)
+                          if int(y) % year_tick_step == 0]
+        tick_labels = [str(int(year_values[i])) for i in tick_positions]
+        ax.set_xticks(tick_positions)
+        ax.set_xticklabels(tick_labels, rotation=0, ha="center", fontsize=9)
     else:
-        rot = 0
-    ax.set_xticklabels(series.index.astype(str), rotation=rot,
-                       ha="right" if rot == 45 else "center", fontsize=9)
+        ax.set_xticks(x)
+        if rotate_xticks and len(series) > 30:
+            rot = 90
+        elif rotate_xticks and len(series) > 6:
+            rot = 45
+        else:
+            rot = 0
+        ax.set_xticklabels(series.index.astype(str), rotation=rot,
+                           ha="right" if rot == 45 else "center", fontsize=9)
+
+    # Auto-label the x-axis as 'Weather Years' whenever the index is a list
+    # of calendar years. This catches every weather-year bar across all the
+    # plotting scripts without requiring per-call edits, and never fires on
+    # short categorical series like solve-status counts.
+    if is_year_index:
+        ax.set_xlabel("Weather Years", fontsize=10, color=LABEL_COLOR)
+
     ax.yaxis.set_major_formatter(_auto_unit_formatter(unit))
  
     _apply_ax_style(ax, ylabel, unit, title, subtitle)
@@ -280,23 +348,64 @@ def stacked_bar(
     legend_cols: int = 2,
     color_map: dict[str, str] | None = None,
     rotate_xticks: bool = True,
+    value_labels: bool = False,
+    year_tick_step: int = 5,
+    stack_order_by_variability: bool = False,
 ) -> None:
     """
     Stacked bar chart — year (or any category) on x-axis, carriers stacked.
     Uses CARRIER_COLORS by default; pass color_map to override.
+
+    Parameters
+    ----------
+    value_labels                 : default False. Long weather-year stacks are
+                                   easier to read without per-bar totals on
+                                   top. Flip to True for short summary stacks.
+    year_tick_step               : when the index is a list of years AND the
+                                   series is long (>30 bars), only label every
+                                   Nth year on the x-axis (default 5).
+    stack_order_by_variability   : default False (legacy ordering: largest
+                                   carrier on the bottom). When True, carriers
+                                   are stacked from LOWEST coefficient of
+                                   variation upward, so the rock-stable
+                                   technologies form a flat foundation and the
+                                   weather-sensitive ones float visibly on top.
+                                   Use this for the installed-capacity figure.
     """
     if wide.empty:
         return
  
     wide = wide.fillna(0.0).sort_index()
  
-    # Select top_n columns by total, bundle rest as "other"
+    # ---- Decide which carriers stay vs. fold into "other" --------------
+    # Always select on absolute size (you don't want to drop a tiny but
+    # variable carrier into "other" just to highlight variability — that
+    # would defeat the purpose).
     totals = wide.sum(axis=0).sort_values(ascending=False)
     top_cols = list(totals.head(top_n).index)
     rest = wide.drop(columns=top_cols, errors="ignore")
     plot = wide[top_cols].copy()
     if rest.shape[1] > 0:
         plot["other"] = rest.sum(axis=1)
+
+    # ---- Decide stack ORDER inside the bars ----------------------------
+    # Two modes:
+    #   - default: largest carrier first, so totals look smooth visually.
+    #   - stack_order_by_variability: ascending CV first, so the stable
+    #     foundation sits at the bottom and any year-to-year wiggle is
+    #     concentrated in the top stacks where it's easy to see.
+    if stack_order_by_variability:
+        means = plot.mean(axis=0).replace(0, np.nan)
+        cvs = (plot.std(axis=0, ddof=0) / means.abs()).fillna(0.0)
+        # Keep "other" at the very top (it's a heterogeneous bucket and its
+        # CV isn't meaningful).
+        if "other" in plot.columns:
+            non_other = [c for c in plot.columns if c != "other"]
+            non_other_sorted = sorted(non_other, key=lambda c: cvs.get(c, 0.0))
+            ordered_cols = non_other_sorted + ["other"]
+        else:
+            ordered_cols = sorted(plot.columns, key=lambda c: cvs.get(c, 0.0))
+        plot = plot[ordered_cols]
  
     cmap = color_map or CARRIER_COLORS
     colors = [cmap.get(str(c), CARRIER_COLORS["other"]) for c in plot.columns]
@@ -309,16 +418,58 @@ def stacked_bar(
         ax.bar(x, plot[col].values, bottom=bottom, label=str(col),
                color=color, edgecolor="white", linewidth=0.4, zorder=3, width=0.65)
         bottom += plot[col].values
- 
-    ax.set_xticks(x)
-    if rotate_xticks and len(plot) > 30:
-        rot = 90
-    elif rotate_xticks and len(plot) > 6:
-        rot = 45
+
+    # Total at the top of each stack — only when explicitly requested,
+    # because long stacks look much cleaner without per-bar text.
+    if value_labels:
+        totals_per_x = plot.sum(axis=1).values
+        label_rot = 90 if (rotate_xticks and len(plot) > 30) else 0
+
+        if label_rot == 90 and len(plot) >= 2:
+            finite = totals_per_x[np.isfinite(totals_per_x)]
+            if finite.size:
+                ymax = float(finite.max())
+                yspan = max(ymax, 1.0)
+                ax.set_ylim(0.0, ymax + 0.28 * yspan)
+
+        if np.any(np.isfinite(totals_per_x)):
+            offset = np.ptp(totals_per_x) * 0.01
+            for xi, total in zip(x, totals_per_x):
+                if np.isfinite(total) and total > 0:
+                    ax.text(
+                        xi, total + offset,
+                        _format_value_label(total, unit),
+                        ha="center", va="bottom",
+                        rotation=label_rot,
+                        fontsize=7.5, color=LABEL_COLOR,
+                    )
+
+    # ---- X-tick label policy: same year-aware logic as bar() -----------
+    is_year_index, year_values = _looks_like_year_index(plot.index)
+
+    if is_year_index and rotate_xticks and len(plot) > 30:
+        tick_positions = [i for i, y in enumerate(year_values)
+                          if int(y) % year_tick_step == 0]
+        tick_labels = [str(int(year_values[i])) for i in tick_positions]
+        ax.set_xticks(tick_positions)
+        ax.set_xticklabels(tick_labels, rotation=0, ha="center", fontsize=9)
     else:
-        rot = 0
-    ax.set_xticklabels(plot.index.astype(str), rotation=rot,
-                       ha="right" if rot == 45 else "center", fontsize=9)
+        ax.set_xticks(x)
+        if rotate_xticks and len(plot) > 30:
+            rot = 90
+        elif rotate_xticks and len(plot) > 6:
+            rot = 45
+        else:
+            rot = 0
+        ax.set_xticklabels(plot.index.astype(str), rotation=rot,
+                           ha="right" if rot == 45 else "center", fontsize=9)
+
+    # Auto-label the x-axis as 'Weather Years' whenever the index is a list
+    # of calendar years. Same policy as bar() — fires for every cross-year
+    # stack across all plotting scripts, never for short categorical stacks.
+    if is_year_index:
+        ax.set_xlabel("Weather Years", fontsize=10, color=LABEL_COLOR)
+
     ax.yaxis.set_major_formatter(_auto_unit_formatter(unit))
  
     handles, labels = ax.get_legend_handles_labels()
@@ -349,13 +500,19 @@ def line(
     markers: bool = True,
     legend_cols: int = 2,
     shade_range: tuple[float, float] | None = None,
+    markers_only: bool = False,
 ) -> None:
     """
     Multi-line plot over a numeric or datetime index.
- 
+
     Parameters
     ----------
-    shade_range : (ymin, ymax) — shade a horizontal band (e.g. normal range)
+    shade_range  : (ymin, ymax) — shade a horizontal band (e.g. normal range)
+    markers_only : if True, draw markers without connecting lines. Use this
+                   when the index is categorical-like (weather years) and a
+                   connecting line would imply a temporal trend that doesn't
+                   exist between adjacent years. The result is effectively a
+                   multi-series scatter on a shared y-axis.
     """
     if df.empty:
         return
@@ -373,10 +530,21 @@ def line(
  
     for col in plot_cols:
         color = cmap.get(str(col), BLUE)
-        mk = "o" if markers else None
-        ax.plot(df.index, df[col], marker=mk, color=color,
-                label=str(col), zorder=3, linewidth=1.8, markersize=4.5)
+        if markers_only:
+            # Pure scatter: no line, just markers. Slightly larger so the
+            # plot still reads cleanly with 86 weather years.
+            ax.scatter(df.index, df[col], color=color, label=str(col),
+                       s=22, alpha=0.85, edgecolors="white", linewidths=0.5,
+                       zorder=3)
+        else:
+            mk = "o" if markers else None
+            ax.plot(df.index, df[col], marker=mk, color=color,
+                    label=str(col), zorder=3, linewidth=1.8, markersize=4.5)
  
+    is_year_index, _ = _looks_like_year_index(df.index)
+    if is_year_index:
+        ax.set_xlabel("Weather Years", fontsize=10, color=LABEL_COLOR)
+
     ax.yaxis.set_major_formatter(_auto_unit_formatter(unit))
     ax.legend(loc="best", ncols=legend_cols,
               fontsize=8.5, framealpha=0.92, edgecolor="#DDDDDD", fancybox=False)
@@ -405,72 +573,264 @@ def scatter_annotated(
     figsize: tuple[float, float] = (8, 6),
     highlight: list | None = None,
     highlight_color: str = RED,
+    # -- Clustering controls --------------------------------------------------
+    cluster: bool = False,
+    cluster_x_tol: float | None = None,
+    cluster_y_tol: float | None = None,
+    cluster_frac: float = 0.03,
+    max_cluster_label_years: int = 4,
+    # -- Label-policy controls ------------------------------------------------
+    label_extrema_singletons: bool = True,
+    n_extra_singleton_labels: int = 12,
 ) -> None:
     """
-    Scatter with point labels (year or index value) and optional OLS trend line.
- 
-    Parameters
-    ----------
-    highlight : list of index values to highlight in a different colour
+    Year-labelled scatter with optional spatial clustering and a readable,
+    non-redundant label policy.
+
+    Labelling policy (when clustering is active):
+      - Every cluster with >= 2 years is labelled (that is the point of
+        clustering: group what the reader would otherwise have to decode).
+      - Singletons are only labelled if they are *extrema* on the data: the
+        years at min/max of x and min/max of y plus the top
+        `n_extra_singleton_labels` off-trend singletons with the largest
+        residuals from the linear fit. Every other singleton becomes an
+        unlabelled dot.
+      - Default n_extra_singleton_labels = 12, chosen to land around 20-30
+        labelled years in an 86-point weather ensemble: more than the bare
+        extrema so the reader learns which years drive the trend, but
+        fewer than all 86 so the figure stays readable. Bump it up for
+        sparse scatters and down for tight ones.
+      - This keeps the figure readable without losing the informative years.
+
+    Statistical policy:
+      - The Pearson r and the OLS trend line are ALWAYS computed on the raw
+        (un-clustered) data, so the statistical content of the figure is
+        identical to the un-clustered version. Clustering is purely visual.
+
+    Clustering tolerances:
+      - If cluster_x_tol / cluster_y_tol are given, they are used as absolute
+        bin widths (backward-compatible with earlier callers).
+      - Otherwise, if cluster=True, tolerances are derived automatically as
+        `cluster_frac` of the data range on each axis (default 3%). This lets
+        callers just pass `cluster=True` without knowing axis units.
+      - If neither is given and cluster=False, no clustering happens and every
+        point is plotted individually (no labels except extrema, if enabled).
     """
+    # ------------------------------------------------------------------
+    # 1. Merge inputs and identify the year index
+    # ------------------------------------------------------------------
     merged = pd.concat([x.rename("x"), y.rename("y")], axis=1).dropna()
     if merged.empty:
         return
- 
-    highlight = highlight or []
- 
-    fig, ax = plt.subplots(figsize=figsize)
- 
-    colors_pts = [
-        highlight_color if idx in highlight else color
-        for idx in merged.index
-    ]
-    ax.scatter(merged["x"], merged["y"], c=colors_pts, zorder=4,
-               s=55, edgecolors="white", linewidths=0.8)
- 
-    for xi, yi, lab in zip(merged["x"], merged["y"], merged.index):
-        ax.annotate(
-            str(lab), (xi, yi),
-            textcoords="offset points", xytext=(5, 4),
-            fontsize=8, color=LABEL_COLOR,
+
+    merged = merged.reset_index()
+    merged = merged.rename(columns={merged.columns[0]: "year"})
+
+    highlight = set(highlight or [])
+
+    def format_years(years):
+        years = sorted(int(v) for v in years)
+        if len(years) == 1:
+            return str(years[0])
+        if len(years) <= max_cluster_label_years:
+            return ", ".join(str(v) for v in years)
+        return f"{years[0]}–{years[-1]} ({len(years)} yrs)"
+
+    # ------------------------------------------------------------------
+    # 2. Resolve clustering tolerances
+    #
+    # Precedence: explicit tolerances > cluster=True (auto) > no clustering.
+    # ------------------------------------------------------------------
+    x_range = float(merged["x"].max() - merged["x"].min())
+    y_range = float(merged["y"].max() - merged["y"].min())
+
+    if cluster_x_tol is None and cluster and x_range > 0:
+        cluster_x_tol = cluster_frac * x_range
+    if cluster_y_tol is None and cluster and y_range > 0:
+        cluster_y_tol = cluster_frac * y_range
+
+    do_cluster = (cluster_x_tol is not None) and (cluster_y_tol is not None)
+
+    # ------------------------------------------------------------------
+    # 3. Build the grouped (plotted) dataframe
+    # ------------------------------------------------------------------
+    if do_cluster:
+        x0 = merged["x"].min()
+        y0 = merged["y"].min()
+
+        merged["x_bin"] = np.floor((merged["x"] - x0) / cluster_x_tol).astype(int)
+        merged["y_bin"] = np.floor((merged["y"] - y0) / cluster_y_tol).astype(int)
+
+        grouped = (
+            merged.groupby(["x_bin", "y_bin"], dropna=False)
+            .agg(
+                x=("x", "mean"),
+                y=("y", "mean"),
+                years=("year", lambda s: list(s)),
+                n_years=("year", "count"),
+            )
+            .reset_index(drop=True)
         )
- 
+    else:
+        grouped = merged[["x", "y", "year"]].copy()
+        grouped["years"] = grouped["year"].apply(lambda v: [v])
+        grouped["n_years"] = 1
+        grouped = grouped[["x", "y", "years", "n_years"]]
+
+    grouped["label"] = grouped["years"].apply(format_years)
+    grouped["is_highlight"] = grouped["years"].apply(
+        lambda vals: any(v in highlight for v in vals)
+    )
+
+    # ------------------------------------------------------------------
+    # 4. Decide which rows get a text label
+    #
+    # - Multi-year clusters always get a label.
+    # - Singletons get a label only if they are extrema on the data, so the
+    #   figure still tells the reader which years are the outliers without
+    #   drowning the plot in 86 overlapping numbers.
+    # ------------------------------------------------------------------
+    grouped["show_label"] = grouped["n_years"] >= 2
+
+    if label_extrema_singletons:
+        singleton_mask = grouped["n_years"] == 1
+        if singleton_mask.any():
+            # Axis extrema: min/max on x and min/max on y (singletons only,
+            # because a multi-cluster sitting at an extremum is already labelled).
+            extrema_idx = set()
+            singles = grouped.loc[singleton_mask]
+            extrema_idx.update([
+                singles["x"].idxmin(),
+                singles["x"].idxmax(),
+                singles["y"].idxmin(),
+                singles["y"].idxmax(),
+            ])
+
+            # A small number of extra "most off-trend" singletons.
+            if n_extra_singleton_labels > 0 and len(merged) >= 3:
+                coeffs = np.polyfit(merged["x"], merged["y"], 1)
+                y_hat = np.polyval(coeffs, singles["x"])
+                residuals = np.abs(singles["y"].values - y_hat)
+                order = np.argsort(residuals)[::-1]
+                for k in order[:n_extra_singleton_labels]:
+                    extrema_idx.add(singles.index[int(k)])
+
+            grouped.loc[list(extrema_idx), "show_label"] = True
+
+    # Highlighted years always get a label too.
+    grouped.loc[grouped["is_highlight"], "show_label"] = True
+
+    # ------------------------------------------------------------------
+    # 5. Draw
+    # ------------------------------------------------------------------
+    fig, ax = plt.subplots(figsize=figsize)
+
+    point_colors = [
+        highlight_color if is_h else color
+        for is_h in grouped["is_highlight"]
+    ]
+    # Cluster size scales with the number of years it merges, so the reader
+    # can see at a glance where the ensemble is dense.
+    point_sizes = 55 + 18 * (grouped["n_years"] - 1)
+
+    ax.scatter(
+        grouped["x"],
+        grouped["y"],
+        c=point_colors,
+        s=point_sizes,
+        zorder=4,
+        edgecolors="white",
+        linewidths=0.8,
+    )
+
+    # Rotating offsets avoid stacked labels when two clusters sit close.
+    offsets = [(5, 4), (6, -10), (-18, 5), (-18, -10), (8, 12), (-12, 12)]
+
+    label_counter = 0
+    for _, row in grouped.iterrows():
+        if not row["show_label"]:
+            continue
+        dx, dy = offsets[label_counter % len(offsets)]
+        label_counter += 1
+        fs = 8 if row["n_years"] == 1 else 7.3
+        ax.annotate(
+            row["label"],
+            (row["x"], row["y"]),
+            textcoords="offset points",
+            xytext=(dx, dy),
+            fontsize=fs,
+            color=LABEL_COLOR,
+            bbox=dict(
+                boxstyle="round,pad=0.15",
+                facecolor="white",
+                edgecolor="none",
+                alpha=0.75,
+            ),
+        )
+
+    # ------------------------------------------------------------------
+    # 6. Trend and Pearson r — always computed on the RAW (un-clustered) data
+    #    so the statistical content matches the un-clustered version.
+    # ------------------------------------------------------------------
     if trend and len(merged) >= 3:
         z = np.polyfit(merged["x"], merged["y"], 1)
         p = np.poly1d(z)
         xline = np.linspace(merged["x"].min(), merged["x"].max(), 200)
-        ax.plot(xline, p(xline), "--", color=RED,
-                linewidth=1.2, alpha=0.65, zorder=2, label="Linear trend")
- 
-        # Pearson r annotation
+        ax.plot(
+            xline, p(xline), "--",
+            color=RED, linewidth=1.2, alpha=0.65, zorder=2, label="Linear trend"
+        )
+
         r = np.corrcoef(merged["x"], merged["y"])[0, 1]
-        ax.text(0.05, 0.95, f"r = {r:.2f}",
-                transform=ax.transAxes, fontsize=9,
-                color=LABEL_COLOR, va="top",
-                bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
-                          edgecolor="#DDDDDD", alpha=0.9))
- 
-    xfmt = xunit if xunit else ""
-    yfmt = yunit if yunit else ""
-    ax.set_xlabel(f"{xlabel} ({xfmt})" if xfmt else xlabel,
-                  fontsize=10, color=LABEL_COLOR)
-    ax.set_ylabel(f"{ylabel} ({yfmt})" if yfmt else ylabel,
-                  fontsize=10, color=LABEL_COLOR)
- 
+        ax.text(
+            0.05, 0.95, f"r = {r:.2f}",
+            transform=ax.transAxes,
+            fontsize=9,
+            color=LABEL_COLOR,
+            va="top",
+            bbox=dict(
+                boxstyle="round,pad=0.3",
+                facecolor="white",
+                edgecolor="#DDDDDD",
+                alpha=0.9,
+            ),
+        )
+
+    ax.set_xlabel(f"{xlabel} ({xunit})" if xunit else xlabel, fontsize=10, color=LABEL_COLOR)
+    ax.set_ylabel(f"{ylabel} ({yunit})" if yunit else ylabel, fontsize=10, color=LABEL_COLOR)
+
     ax.yaxis.grid(True, color="#E0E0E0", linewidth=0.7, zorder=0)
     ax.xaxis.grid(True, color="#E0E0E0", linewidth=0.7, zorder=0)
     ax.set_axisbelow(True)
- 
+
     full_title = f"{title}\n{subtitle}" if subtitle else title
-    ax.set_title(full_title, fontsize=11, fontweight="bold",
-                 color=TITLE_COLOR, pad=10, loc="left")
- 
+    ax.set_title(
+        full_title,
+        fontsize=11,
+        fontweight="bold",
+        color=TITLE_COLOR,
+        pad=10,
+        loc="left",
+    )
+
     if trend:
         ax.legend(fontsize=8, framealpha=0.92, edgecolor="#DDDDDD", fancybox=False)
- 
+
+    # Footer note only makes sense when clustering is actually active.
+    if do_cluster and (grouped["n_years"] > 1).any():
+        ax.text(
+            0.01, 0.01,
+            "Nearby years are grouped into one marker (size ∝ n_years). "
+            "Only clusters and axis extrema are labelled.",
+            transform=ax.transAxes,
+            ha="left",
+            va="bottom",
+            fontsize=7.5,
+            color="dimgray",
+        )
+
     fig.tight_layout()
     savefig(fig, out_path)
- 
  
 # ---------------------------------------------------------------------------
 # Heatmap (year × season or year × region)

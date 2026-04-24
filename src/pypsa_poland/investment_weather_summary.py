@@ -30,9 +30,7 @@ Main outputs
 Usage example
 -------------
 python investment_weather_summary.py \
-    --runs_summary C:/Users/adria/MODEL_PyPSA/Core/runs/weather_year_comparison/all_runs_summary.csv \
-    --inputs_csv   C:/Users/adria/MODEL_PyPSA/Core/runs/weather_year_inputs/weather_year_inputs_summary.csv \
-    --out_dir      C:/Users/adria/MODEL_PyPSA/Core/runs/weather_year_comparison/investment_weather_summary
+    --runs_summary C:/Users/adria/MODEL_PyPSA/Core/runs/weather_year_comparison/all_runs_summary.csv --inputs_csv   C:/Users/adria/MODEL_PyPSA/Core/runs/weather_year_inputs/weather_year_inputs_summary.csv --out_dir      C:/Users/adria/MODEL_PyPSA/Core/runs/weather_year_comparison/investment_weather_summary
 """
 
 import argparse
@@ -110,7 +108,13 @@ def choose_default_color_metrics(df: pd.DataFrame) -> list[str]:
 
 
 def choose_variable_capacity_metrics(df: pd.DataFrame, max_n: int = 8) -> list[str]:
-    cap_cols = [c for c in df.columns if c.startswith("cap_gen_") or c.startswith("storage_power_") or c.startswith("storage_energy_")]
+    # storage_energy_* is intentionally omitted: storage_power and
+    # storage_energy are hard-linked via fixed max_hours in the model, so
+    # ranking both inflates the top_n with redundant duplicates.
+    cap_cols = [
+        c for c in df.columns
+        if c.startswith("cap_gen_") or c.startswith("storage_power_")
+    ]
     rows = []
     for c in cap_cols:
         cv = coefficient_of_variation(df[c])
@@ -163,46 +167,85 @@ def clustered_scatter_table(
 
 
 
+
 def plot_clustered_scatter(clustered: pd.DataFrame, title: str, color_label: str, out_path: Path) -> None:
+    """
+    2-D weather-stress map: VRES CF on x, electricity-for-heat on y, coloured by
+    some output metric (cost, storage, etc.). Points that fall in the same x/y
+    bin are already merged upstream by clustered_scatter_table, so this function
+    just draws them and labels the readable subset.
+
+    Labelling policy:
+      - Every multi-year cluster gets a label (that is the whole point of
+        clustering, and those labels are the ones the reader actually cares about).
+      - Singletons are only labelled if they are extrema on the *axes* (min/max
+        of x, min/max of y) or extrema on the *colour scale* (min/max of
+        color_value). The colour extrema matter because on a stress map coloured
+        by, say, hydrogen storage, the cheapest/most-expensive single year is
+        often more interesting than the geometric corner of the cloud.
+      - Every other singleton is drawn as an unlabelled dot.
+    """
     if clustered.empty:
         return
 
     fig, ax = plt.subplots(figsize=(8.5, 6.2))
-    sizes = 40 + 35 * clustered["n_years"].values
+    # Marker size scales with the number of years the dot represents, so the
+    # reader can see where the ensemble is dense at a glance.
+    sizes = 55 + 45 * (clustered["n_years"].values - 1)
+
     sc = ax.scatter(
         clustered["x"],
         clustered["y"],
         c=clustered["color_value"],
         s=sizes,
-        alpha=0.9,
+        alpha=0.92,
         edgecolors="black",
-        linewidths=0.4,
+        linewidths=0.45,
     )
 
-    # label many more points:
-    # - always label multi-year clusters
-    # - also label single-year points with a small alternating offset
-    for i, (_, r) in enumerate(clustered.iterrows()):
-        years_txt = str(r["years"])
+    singletons = clustered.loc[clustered["n_years"] == 1].copy()
+    multi = clustered.loc[clustered["n_years"] >= 2].copy()
 
-        if int(r["n_years"]) >= 3:
+    # Small offset cycle to avoid stacked labels where two dots sit close.
+    offsets = [(5, 5), (6, -9), (-12, 6), (-12, -9), (8, 11), (-10, 11)]
+
+    # --- Multi-year clusters: always labelled ---------------------------
+    for i, (_, r) in enumerate(multi.iterrows()):
+        dx, dy = offsets[i % len(offsets)]
+        ax.annotate(
+            str(r["years"]),
+            (r["x"], r["y"]),
+            fontsize=8,
+            xytext=(dx, dy),
+            textcoords="offset points",
+            bbox=dict(boxstyle="round,pad=0.15",
+                      facecolor="white", edgecolor="none", alpha=0.70),
+        )
+
+    # --- Singletons: only the informative ones --------------------------
+    if not singletons.empty:
+        idx_to_label = set()
+        # Axis extrema
+        idx_to_label.add(singletons["x"].idxmin())
+        idx_to_label.add(singletons["x"].idxmax())
+        idx_to_label.add(singletons["y"].idxmin())
+        idx_to_label.add(singletons["y"].idxmax())
+        # Colour-scale extrema (the whole point of a coloured stress map)
+        if "color_value" in singletons.columns and singletons["color_value"].notna().any():
+            idx_to_label.add(singletons["color_value"].idxmin())
+            idx_to_label.add(singletons["color_value"].idxmax())
+
+        for i, idx in enumerate(sorted(idx_to_label)):
+            r = singletons.loc[idx]
+            dx, dy = offsets[i % len(offsets)]
             ax.annotate(
-                years_txt,
+                str(r["years"]),
                 (r["x"], r["y"]),
-                fontsize=8,
-                xytext=(4, 4),
+                fontsize=7.5,
+                xytext=(dx, dy),
                 textcoords="offset points",
-            )
-        else:
-            dx = 0.0006 if i % 2 == 0 else -0.0006
-            dy = 0.22 if i % 3 == 0 else (-0.22 if i % 3 == 1 else 0.10)
-            ax.annotate(
-                years_txt,
-                (r["x"], r["y"]),
-                fontsize=7,
-                alpha=0.9,
-                xytext=(r["x"] + dx, r["y"] + dy),
-                textcoords="data",
+                bbox=dict(boxstyle="round,pad=0.12",
+                          facecolor="white", edgecolor="none", alpha=0.65),
             )
 
     ax.set_xlabel("Combined VRES capacity factor (p.u.)")
@@ -224,7 +267,6 @@ def plot_clustered_scatter(clustered: pd.DataFrame, title: str, color_label: str
     plt.savefig(out_path, dpi=220)
     plt.close()
 
-
 def plot_capacity_trajectories(df: pd.DataFrame, metrics: list[str], out_path: Path) -> None:
     if not metrics:
         return
@@ -235,7 +277,7 @@ def plot_capacity_trajectories(df: pd.DataFrame, metrics: list[str], out_path: P
         s, unit = scale_series(df[col], col)
         plt.plot(year_idx, s, marker="o", linewidth=1.2, label=pretty_name(col))
     plt.title("Selected capacity and storage metrics across weather years")
-    plt.xlabel("Weather year")
+    plt.xlabel("Weather Years")
     plt.ylabel("Scaled value")
     plt.legend(fontsize=7, ncol=2)
     plt.tight_layout()
@@ -274,7 +316,7 @@ def plot_cost_range(df: pd.DataFrame, out_path: Path) -> None:
     plt.axhline(float(s.mean()), linestyle="--", linewidth=1.0, color="dimgray", label=f"Mean: {s.mean():.1f} bn €")
     plt.fill_between(year, float(s.min()), float(s.max()), alpha=0.08)
     plt.title("System cost range across weather years")
-    plt.xlabel("Weather year")
+    plt.xlabel("Weather Years")
     plt.ylabel("System cost (bn €)")
     plt.legend()
     plt.tight_layout()
@@ -328,12 +370,19 @@ def main() -> None:
     # ------------------------------------------------------------------
     # Capacity / investment sensitivity summary
     # ------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # Capacity / investment sensitivity summary
+    # ------------------------------------------------------------------
+    # Note: storage_energy_* metrics are intentionally excluded here.
+    # In the NZP model, storage_power_*_mw and storage_energy_*_mwh are
+    # hard-linked through a fixed max_hours per storage class, so showing
+    # both sides of that identity as independent sensitivities would
+    # double-count the same story. Keep only the power side.
     candidate_cols = [
         c for c in merged.columns
         if (
             c.startswith("cap_gen_")
             or c.startswith("storage_power_")
-            or c.startswith("storage_energy_")
             or c in {
                 "electrolyser_total_mw",
                 "heat_pump_total_mw",
